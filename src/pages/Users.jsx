@@ -76,7 +76,7 @@ const Users = () => {
   const totalPlatformCapital = users.reduce((sum, u) => sum + u.totalInvested, 0);
 
   return (
-    <div className="space-y-6 bg-white min-h-screen text-slate-800 p-4">
+    <div className="space-y-6 bg-white min-h-screen text-slate-800 p-6">
       
       {/* Upper Navigation Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
