@@ -2,7 +2,6 @@ import { useState } from "react";
 import { 
   TrendingUp, 
   ArrowUpRight, 
-  DollarSign, 
   Percent, 
   Calculator,
   Building
@@ -18,13 +17,13 @@ import {
   ResponsiveContainer 
 } from "recharts";
 
-// Clean historical earnings data
+// Clean historical earnings data in Naira
 const monthlyEarningsData = [
-  { month: "Jan", NetProfit: 2400, YourShare: 1080 },
-  { month: "Feb", NetProfit: 3500, YourShare: 1575 },
-  { month: "Mar", NetProfit: 4100, YourShare: 1845 },
-  { month: "Apr", NetProfit: 5800, YourShare: 2610 },
-  { month: "May", NetProfit: 7200, YourShare: 3240 },
+  { month: "Jan", NetProfit: 2400000, YourShare: 1080000 },
+  { month: "Feb", NetProfit: 3500000, YourShare: 1575000 },
+  { month: "Mar", NetProfit: 4100000, YourShare: 1845000 },
+  { month: "Apr", NetProfit: 5800000, YourShare: 2610000 },
+  { month: "May", NetProfit: 7200000, YourShare: 3240000 },
 ];
 
 // Motion animation presets
@@ -41,13 +40,29 @@ const staggerContainer = {
   }
 };
 
+// Standard local currency formatter helper
+const formatNaira = (value) => {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 2,
+  }).format(value);
+};
+
+// Simplified chart axis numerical formatter (e.g., 2M, 500k)
+const formatAxisValues = (num) => {
+  if (num >= 1000000) return `₦ ${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `₦ ${(num / 1000).toFixed(0)}k`;
+  return `₦ ${num}`;
+};
+
 const Dashboard = () => {
   // Profit Split Calculator State
-  const [calcAmount, setCalcAmount] = useState("1000");
+  const [calcAmount, setCalcAmount] = useState("100000");
   
   const totalProfitGenerated = parseFloat(calcAmount) || 0;
-  const companyCut = (totalProfitGenerated * 0.55).toFixed(2);
-  const investorCut = (totalProfitGenerated * 0.45).toFixed(2);
+  const companyCut = totalProfitGenerated * 0.55;
+  const investorCut = totalProfitGenerated * 0.45;
 
   return (
     <motion.div 
@@ -75,13 +90,13 @@ const Dashboard = () => {
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Your Deposited Principal</span>
-            <h3 className="text-2xl font-bold text-white">$10,000.00</h3>
+            <h3 className="text-2xl font-bold text-white">{formatNaira(10000000)}</h3>
             <span className="text-xs font-semibold text-[#34D399] flex items-center gap-1">
               <TrendingUp size={12} /> Actively investing
             </span>
           </div>
-          <div className="p-3 bg-[#090A0F] text-[#34D399] rounded-lg">
-            <DollarSign size={20} />
+          <div className="w-11 h-11 bg-[#090A0F] text-[#34D399] rounded-lg flex items-center justify-center font-bold text-xl">
+            ₦
           </div>
         </motion.div>
 
@@ -92,7 +107,7 @@ const Dashboard = () => {
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Your Earnings (45% Share)</span>
-            <h3 className="text-2xl font-bold text-[#34D399]">+$3,240.00</h3>
+            <h3 className="text-2xl font-bold text-[#34D399]">{formatNaira(3240000)}</h3>
             <span className="text-xs text-[#9CA3AF] block">Total profit paid out to date</span>
           </div>
           <div className="p-3 bg-[#090A0F] text-[#34D399] rounded-lg">
@@ -107,7 +122,7 @@ const Dashboard = () => {
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Company Management Cut (55%)</span>
-            <h3 className="text-2xl font-bold text-slate-300">$3,960.00</h3>
+            <h3 className="text-2xl font-bold text-slate-300">{formatNaira(3960000)}</h3>
             <span className="text-xs text-[#9CA3AF] block">Covers platform fees and system maintenance</span>
           </div>
           <div className="p-3 bg-[#090A0F] text-[#9CA3AF] rounded-lg">
@@ -131,13 +146,14 @@ const Dashboard = () => {
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyEarningsData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+              <BarChart data={monthlyEarningsData} margin={{ top: 10, right: 5, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} />
                 <XAxis dataKey="month" stroke="#6B7280" fontSize={12} tickLine={false} />
-                <YAxis stroke="#6B7280" fontSize={11} tickLine={false} />
+                <YAxis stroke="#6B7280" fontSize={11} tickLine={false} tickFormatter={formatAxisValues} />
                 <Tooltip 
                   cursor={{ fill: '#090A0F', opacity: 0.4 }}
                   contentStyle={{ backgroundColor: '#1F2937', borderColor: '#4B5563', color: '#fff' }}
+                  formatter={(value) => [formatNaira(value)]}
                 />
                 <Bar dataKey="NetProfit" fill="#4B5563" radius={[4, 4, 0, 0]} name="Gross Pool Profit" barSize={24} />
                 <Bar dataKey="YourShare" fill="#34D399" radius={[4, 4, 0, 0]} name="Your Payout (45%)" barSize={24} />
@@ -163,9 +179,9 @@ const Dashboard = () => {
 
             {/* Input Box Area */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-[#9CA3AF] block">Hypothetical Return Amount ($)</label>
+              <label className="text-xs font-bold text-[#9CA3AF] block">Hypothetical Return Amount (₦)</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] text-sm font-semibold">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] text-sm font-semibold">₦</span>
                 <input 
                   type="number"
                   value={calcAmount}
@@ -180,12 +196,12 @@ const Dashboard = () => {
             <div className="bg-[#090A0F] border border-slate-800 rounded-lg p-3 space-y-2.5 text-xs">
               <div className="flex justify-between items-center">
                 <span className="text-[#9CA3AF] font-medium">Your Return (45%):</span>
-                <span className="font-bold text-[#34D399] text-sm">${investorCut}</span>
+                <span className="font-bold text-[#34D399] text-sm">{formatNaira(investorCut)}</span>
               </div>
               <div className="h-px bg-slate-800" />
               <div className="flex justify-between items-center">
                 <span className="text-[#9CA3AF] font-medium">Company Fee (55%):</span>
-                <span className="font-bold text-slate-300">${companyCut}</span>
+                <span className="font-bold text-slate-300">{formatNaira(companyCut)}</span>
               </div>
             </div>
           </div>
