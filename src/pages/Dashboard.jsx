@@ -54,13 +54,13 @@ const Dashboard = () => {
       initial="hidden"
       animate="visible"
       variants={staggerContainer}
-      className="space-y-6 bg-white min-h-screen text-slate-800 p-4"
+      className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF] p-4"
     >
       
       {/* Title Header */}
       <motion.div variants={fadeInUp}>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Investor Dashboard</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Real-time breakdown of your investments and profit distributions.</p>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Investor Dashboard</h1>
+        <p className="text-sm text-[#9CA3AF] mt-0.5">Real-time breakdown of your investments and profit distributions.</p>
       </motion.div>
 
       {/* 1. Core Financial Metrics */}
@@ -71,16 +71,16 @@ const Dashboard = () => {
         {/* Card 1 */}
         <motion.div 
           variants={fadeInUp}
-          className="p-5 border border-slate-200 rounded-xl bg-white flex items-center justify-between"
+          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
         >
           <div className="space-y-1">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Your Deposited Principal</span>
-            <h3 className="text-2xl font-bold text-slate-900">$10,000.00</h3>
-            <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
+            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Your Deposited Principal</span>
+            <h3 className="text-2xl font-bold text-white">$10,000.00</h3>
+            <span className="text-xs font-semibold text-[#34D399] flex items-center gap-1">
               <TrendingUp size={12} /> Actively investing
             </span>
           </div>
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+          <div className="p-3 bg-[#090A0F] text-[#34D399] rounded-lg">
             <DollarSign size={20} />
           </div>
         </motion.div>
@@ -88,14 +88,14 @@ const Dashboard = () => {
         {/* Card 2 */}
         <motion.div 
           variants={fadeInUp}
-          className="p-5 border border-slate-200 rounded-xl bg-white flex items-center justify-between"
+          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
         >
           <div className="space-y-1">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Your Earnings (45% Share)</span>
-            <h3 className="text-2xl font-bold text-emerald-600">+$3,240.00</h3>
-            <span className="text-xs text-slate-400 block">Total profit paid out to date</span>
+            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Your Earnings (45% Share)</span>
+            <h3 className="text-2xl font-bold text-[#34D399]">+$3,240.00</h3>
+            <span className="text-xs text-[#9CA3AF] block">Total profit paid out to date</span>
           </div>
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+          <div className="p-3 bg-[#090A0F] text-[#34D399] rounded-lg">
             <Percent size={20} />
           </div>
         </motion.div>
@@ -103,14 +103,14 @@ const Dashboard = () => {
         {/* Card 3 */}
         <motion.div 
           variants={fadeInUp}
-          className="p-5 border border-slate-200 rounded-xl bg-white flex items-center justify-between"
+          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
         >
           <div className="space-y-1">
-            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider block">Company Management Cut (55%)</span>
-            <h3 className="text-2xl font-bold text-slate-700">$3,960.00</h3>
-            <span className="text-xs text-slate-400 block">Covers platform fees and system maintenance</span>
+            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Company Management Cut (55%)</span>
+            <h3 className="text-2xl font-bold text-slate-300">$3,960.00</h3>
+            <span className="text-xs text-[#9CA3AF] block">Covers platform fees and system maintenance</span>
           </div>
-          <div className="p-3 bg-slate-100 text-slate-600 rounded-lg">
+          <div className="p-3 bg-[#090A0F] text-[#9CA3AF] rounded-lg">
             <Building size={20} />
           </div>
         </motion.div>
@@ -122,22 +122,25 @@ const Dashboard = () => {
         {/* Simple Bar Chart Layout */}
         <motion.div 
           variants={fadeInUp}
-          className="p-5 border border-slate-200 rounded-xl bg-white space-y-4 lg:col-span-2"
+          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] space-y-4 lg:col-span-2"
         >
           <div>
-            <h3 className="font-bold text-slate-900 text-base">Monthly Profit Distribution Flow</h3>
-            <p className="text-xs text-slate-400">Comparing gross capital gains against your personal 45% payout.</p>
+            <h3 className="font-bold text-white text-base">Monthly Profit Distribution Flow</h3>
+            <p className="text-xs text-[#9CA3AF]">Comparing gross capital gains against your personal 45% payout.</p>
           </div>
 
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyEarningsData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
-                <XAxis dataKey="month" stroke="#94A3B8" fontSize={12} tickLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} />
-                <Tooltip cursor={{ fill: '#F8FAFC' }} />
-                <Bar dataKey="NetProfit" fill="#CBD5E1" radius={[4, 4, 0, 0]} name="Gross Pool Profit" barSize={24} />
-                <Bar dataKey="YourShare" fill="#10B981" radius={[4, 4, 0, 0]} name="Your Payout (45%)" barSize={24} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} />
+                <XAxis dataKey="month" stroke="#6B7280" fontSize={12} tickLine={false} />
+                <YAxis stroke="#6B7280" fontSize={11} tickLine={false} />
+                <Tooltip 
+                  cursor={{ fill: '#090A0F', opacity: 0.4 }}
+                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#4B5563', color: '#fff' }}
+                />
+                <Bar dataKey="NetProfit" fill="#4B5563" radius={[4, 4, 0, 0]} name="Gross Pool Profit" barSize={24} />
+                <Bar dataKey="YourShare" fill="#34D399" radius={[4, 4, 0, 0]} name="Your Payout (45%)" barSize={24} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -146,50 +149,50 @@ const Dashboard = () => {
         {/* Dynamic Interactive Split Tool Card */}
         <motion.div 
           variants={fadeInUp}
-          className="p-5 border border-slate-200 rounded-xl bg-white flex flex-col justify-between"
+          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex flex-col justify-between"
         >
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-slate-900">
-              <Calculator size={18} className="text-emerald-600" />
+            <div className="flex items-center gap-2 text-white">
+              <Calculator size={18} className="text-[#34D399]" />
               <h3 className="font-bold text-base">Split Estimator</h3>
             </div>
             
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-[#9CA3AF] leading-relaxed">
               Input any target investment return amount below to accurately compute how the returns divide up automatically.
             </p>
 
             {/* Input Box Area */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-500 block">Hypothetical Return Amount ($)</label>
+              <label className="text-xs font-bold text-[#9CA3AF] block">Hypothetical Return Amount ($)</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] text-sm font-semibold">$</span>
                 <input 
                   type="number"
                   value={calcAmount}
                   onChange={(e) => setCalcAmount(e.target.value)}
                   placeholder="0.00"
-                  className="w-full pl-7 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                  className="w-full pl-7 pr-3 py-2.5 bg-[#090A0F] border border-slate-700 rounded-lg text-sm font-semibold text-white focus:outline-none focus:border-[#3B82F6] transition-all"
                 />
               </div>
             </div>
 
             {/* Real-Time Mathematical Output Feed */}
-            <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 space-y-2.5 text-xs">
+            <div className="bg-[#090A0F] border border-slate-800 rounded-lg p-3 space-y-2.5 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-medium">Your Return (45%):</span>
-                <span className="font-bold text-emerald-600 text-sm">${investorCut}</span>
+                <span className="text-[#9CA3AF] font-medium">Your Return (45%):</span>
+                <span className="font-bold text-[#34D399] text-sm">${investorCut}</span>
               </div>
-              <div className="h-px bg-slate-200/60" />
+              <div className="h-px bg-slate-800" />
               <div className="flex justify-between items-center">
-                <span className="text-slate-500 font-medium">Company Fee (55%):</span>
-                <span className="font-bold text-slate-700">${companyCut}</span>
+                <span className="text-[#9CA3AF] font-medium">Company Fee (55%):</span>
+                <span className="font-bold text-slate-300">${companyCut}</span>
               </div>
             </div>
           </div>
 
-          <button className="w-full mt-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 group">
+          <button className="w-full mt-4 py-2.5 border border-slate-700 hover:border-[#3B82F6] hover:bg-[#090A0F] text-white font-semibold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 group">
             Review Investment Policies
-            <ArrowUpRight size={14} className="text-slate-400 group-hover:text-slate-900 transition-colors" />
+            <ArrowUpRight size={14} className="text-[#9CA3AF] group-hover:text-white transition-colors" />
           </button>
         </motion.div>
 

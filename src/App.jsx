@@ -6,6 +6,8 @@ import DashboardLayout from "./layout/DashboardLayout"
 import Dashboard from "./pages/Dashboard"
 import Investment from "./pages/Investment"
 import Users from "./pages/Users"
+import Settings from './pages/Settings'
+import Profile from './pages/Profile'
 
 const App = () => {
   return (
@@ -15,6 +17,8 @@ const App = () => {
       <Route path="" element={<Dashboard />} />
       <Route path="investment" element={<Investment />} />
       <Route path="users" element={<Users />} />
+      <Route path="settings" element={<Settings />} />
+      <Route path="profile" element={<Profile />} />
       </Route>
       
     </Routes>

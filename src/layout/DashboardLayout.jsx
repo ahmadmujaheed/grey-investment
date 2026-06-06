@@ -61,14 +61,14 @@ const DashboardLayout = ({ children }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900">
+    <div className="min-h-screen bg-[#1F1F1F] font-sans antialiased text-[#9CA3AF]">
       {/* 1. FIXED HEADER */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200/80 z-40 flex items-center justify-between px-6 shadow-sm shadow-slate-100">
+      <header className="fixed top-0 left-0 right-0 h-16 bg-[#1F2937] border-b border-slate-800 z-40 flex items-center justify-between px-6 shadow-sm shadow-[#090A0F]">
         <div className="flex items-center gap-4">
           {/* Mobile Hamburguer Toggle */}
           <button
             onClick={() => setIsMobileOpen(!isMobileOpen)}
-            className="lg:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+            className="lg:hidden p-2 text-[#9CA3AF] hover:bg-[#090A0F] rounded-xl transition-colors"
           >
             {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -76,36 +76,36 @@ const DashboardLayout = ({ children }) => {
           {/* Desktop Collapse Toggle */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden lg:flex p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+            className="hidden lg:flex p-2 text-[#9CA3AF] hover:bg-[#090A0F] rounded-xl transition-colors"
           >
             <Menu size={20} />
           </button>
 
           {/* Business Logo */}
           <div className="flex items-center gap-2 select-none">
-            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-black text-lg">
+            <div className="w-8 h-8 rounded-lg bg-[#34D399] flex items-center justify-center text-[#090A0F] font-black text-lg">
               G
             </div>
-            <span className="text-xl font-bold tracking-tight text-slate-900">
-              Grey <span className="text-emerald-600">Investment</span>
+            <span className="text-xl font-bold tracking-tight text-white">
+              Grey <span className="text-[#34D399]">Pools</span>
             </span>
           </div>
         </div>
 
         {/* Right Header Controls */}
         <div className="flex items-center gap-4">
-          <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl relative transition-colors">
+          <button className="p-2 text-[#9CA3AF] hover:bg-[#090A0F] rounded-xl relative transition-colors">
             <Bell size={20} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#3B82F6] rounded-full" />
           </button>
 
-          <div className="h-8 w-px bg-slate-200" />
+          <div className="h-8 w-px bg-slate-800" />
 
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-slate-200 border border-slate-300 overflow-hidden flex items-center justify-center font-bold text-slate-600 text-sm">
+            <div className="w-9 h-9 rounded-full bg-[#090A0F] border border-slate-800 overflow-hidden flex items-center justify-center font-bold text-[#34D399] text-sm">
               JD
             </div>
-            <span className="hidden sm:inline text-sm font-semibold text-slate-700">
+            <span className="hidden sm:inline text-sm font-semibold text-white">
               John Doe
             </span>
           </div>
@@ -116,7 +116,7 @@ const DashboardLayout = ({ children }) => {
       <motion.aside
         animate={{ width: isCollapsed ? "5rem" : "16rem" }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="hidden lg:flex flex-col fixed top-16 bottom-0 left-0 bg-white border-r border-slate-200/80 z-30 overflow-x-hidden justify-between py-6"
+        className="hidden lg:flex flex-col fixed top-16 bottom-0 left-0 bg-[#1F2937] border-r border-slate-800 z-30 overflow-x-hidden justify-between py-6"
       >
         {/* Navigation items */}
         <div className="px-4 space-y-1.5">
@@ -130,8 +130,8 @@ const DashboardLayout = ({ children }) => {
                 to={item.path} // Moves to the next page via URL routing
                 className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm group transition-all cursor-pointer ${
                   isActive
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-[#34D399] text-[#090A0F]"
+                    : "text-[#9CA3AF] hover:bg-[#090A0F] hover:text-white"
                 }`}
               >
                 <div className="shrink-0">
@@ -139,8 +139,8 @@ const DashboardLayout = ({ children }) => {
                     size={20}
                     className={
                       isActive
-                        ? "text-emerald-600"
-                        : "text-slate-400 group-hover:text-slate-600"
+                        ? "text-[#090A0F]"
+                        : "text-[#9CA3AF] group-hover:text-white"
                     }
                   />
                 </div>
@@ -161,11 +161,11 @@ const DashboardLayout = ({ children }) => {
 
         {/* Footer Logout Button */}
         <div className="px-4">
-          <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm text-rose-600 hover:bg-rose-50/50 transition-colors group">
+          <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm text-rose-400 hover:bg-[#090A0F] transition-colors group">
             <div className="shrink-0">
               <LogOut
                 size={20}
-                className="text-rose-400 group-hover:text-rose-600"
+                className="text-rose-400 group-hover:text-rose-500"
               />
             </div>
             {!isCollapsed && (
@@ -187,7 +187,7 @@ const DashboardLayout = ({ children }) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileOpen(false)}
-              className="lg:hidden fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-40"
+              className="lg:hidden fixed inset-0 bg-[#090A0F]/70 backdrop-blur-sm z-40"
             />
             {/* Drawer */}
             <motion.aside
@@ -195,24 +195,24 @@ const DashboardLayout = ({ children }) => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-              className="lg:hidden fixed top-0 bottom-0 left-0 w-64 bg-white z-50 p-6 flex flex-col justify-between shadow-2xl"
+              className="lg:hidden fixed top-0 bottom-0 left-0 w-64 bg-[#1F2937] border-r border-slate-800 z-50 p-6 flex flex-col justify-between shadow-2xl"
             >
               <div className="space-y-8">
                 {/* Mobile Header Brand */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-black text-lg">
+                    <div className="w-8 h-8 rounded-lg bg-[#34D399] flex items-center justify-center text-[#090A0F] font-black text-lg">
                       G
                     </div>
-                    <span className="text-xl font-bold tracking-tight text-slate-900">
-                      Grey
+                    <span className="text-xl font-bold tracking-tight text-white">
+                      Grey <span className="text-[#34D399]">Pools</span>
                     </span>
                   </div>
                   <button
                     onClick={() => setIsMobileOpen(false)}
-                    className="p-1 rounded-lg hover:bg-slate-100"
+                    className="p-1 rounded-lg hover:bg-[#090A0F]"
                   >
-                    <X size={20} className="text-slate-500" />
+                    <X size={20} className="text-[#9CA3AF]" />
                   </button>
                 </div>
 
@@ -225,9 +225,9 @@ const DashboardLayout = ({ children }) => {
                         key={item.id}
                         onClick={() => setIsMobileOpen(false)}
                         className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm ${
-                          item.id === "dash"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "text-slate-600 hover:bg-slate-50"
+                          item.id === "dashboard"
+                            ? "bg-[#34D399] text-[#090A0F]"
+                            : "text-[#9CA3AF] hover:bg-[#090A0F]"
                         }`}
                       >
                         <Icon size={20} />
@@ -238,7 +238,7 @@ const DashboardLayout = ({ children }) => {
                 </div>
               </div>
 
-              <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm text-rose-600 hover:bg-rose-50 transition-colors">
+              <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm text-rose-400 hover:bg-[#090A0F] transition-colors">
                 <LogOut size={20} />
                 <span>Logout</span>
               </button>
