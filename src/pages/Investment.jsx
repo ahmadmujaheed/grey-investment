@@ -177,6 +177,18 @@ const Investment = () => {
     message.success("Investment tier deployed successfully!");
   };
 
+  const handleDeletePackage = (packageId, e) => {
+    if (e) e.stopPropagation(); // Prevents layout switching workflow triggering on tier card item click
+    
+    const updatedPackages = packages.filter((pkg) => pkg.id !== packageId);
+    setPackages(updatedPackages);
+    
+    if (selectedPackage && selectedPackage.id === packageId) {
+      setSelectedPackage(null);
+    }
+    message.warning("Investment package tier removed from platform catalog.");
+  };
+
   const handleAddInvestor = (e) => {
     e.preventDefault();
     if (!selectedInvestorName || !newInvestorAmount) return;
@@ -298,7 +310,7 @@ const Investment = () => {
                 initial="hidden"
                 animate="visible"
                 onClick={() => setSelectedPackage(pkg)}
-                className="group cursor-pointer border border-slate-800 rounded-none overflow-hidden bg-[#1F2937] hover:border-[#34D399]/60 transition-all flex flex-col justify-between"
+                className="group cursor-pointer border border-slate-800 rounded-none overflow-hidden bg-[#1F2937] hover:border-[#34D399]/60 transition-all flex flex-col justify-between relative"
               >
                 <div>
                   <div className="h-40 w-full overflow-hidden bg-[#090A0F] relative rounded-none">
@@ -307,6 +319,15 @@ const Investment = () => {
                       alt={pkg.name} 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 rounded-none"
                     />
+                    
+                    {/* Floating Corner Delete Button Layer */}
+                    <button
+                      onClick={(e) => handleDeletePackage(pkg.id, e)}
+                      title="Delete Investment Package"
+                      className="absolute top-2 right-2 bg-[#090A0F]/80 border border-slate-800 p-2 text-[#9CA3AF] hover:text-rose-400 hover:bg-[#090A0F] transition-all z-10"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
 
                   <div className="p-4 space-y-3">
@@ -352,7 +373,17 @@ const Investment = () => {
               <ArrowLeft size={16} />
               <span>Back to Packages</span>
             </button>
-            <span className="text-xs font-mono bg-[#1F2937] text-[#9CA3AF] px-2 py-1 uppercase tracking-wider border border-slate-800">Asset ID: #{selectedPackage.id}</span>
+            
+            <div className="flex items-center gap-3">
+              <button
+                onClick={(e) => handleDeletePackage(selectedPackage.id, e)}
+                className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 transition-colors"
+              >
+                <Trash2 size={13} />
+                Delete Package
+              </button>
+              <span className="text-xs font-mono bg-[#1F2937] text-[#9CA3AF] px-2 py-1 uppercase tracking-wider border border-slate-800">Asset ID: #{selectedPackage.id}</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
