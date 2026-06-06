@@ -6,7 +6,8 @@ import {
   Save, 
   Lock, 
   Eye, 
-  EyeOff
+  EyeOff,
+  Percent
 } from "lucide-react";
 import { motion } from "motion/react";
 import { message } from "antd";
@@ -30,6 +31,12 @@ const Settings = () => {
     confirmPassword: ""
   });
 
+  // --- Revenue Split State ---
+  const [revenueSplit, setRevenueSplit] = useState({
+    companyShare: 40,
+    investorShare: 60
+  });
+
   const [showPass, setShowPass] = useState({ current: false, new: false, confirm: false });
 
   // --- Handlers ---
@@ -48,6 +55,18 @@ const Settings = () => {
     setSecurityForm({ current: '', new: '', confirm: '' });
   };
 
+  const handleRevenueSplitSave = (e) => {
+    e.preventDefault();
+    const total = Number(revenueSplit.companyShare) + Number(revenueSplit.investorShare);
+    
+    if (total !== 100) {
+      message.error(`Allocation mismatch: Combined distribution must total exactly 100% (Currently: ${total}%).`);
+      return;
+    }
+    
+    message.success("Platform equity distribution schema saved successfully!");
+  };
+
   return (
     <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF] p-6">
       
@@ -57,7 +76,7 @@ const Settings = () => {
           <SettingsIcon size={22} className="text-[#34D399]" />
           <h1 className="text-2xl font-bold tracking-tight">System Settings</h1>
         </div>
-        <p className="text-sm text-[#9CA3AF] mt-0.5">Manage administrative profile details and secure system access passwords.</p>
+        <p className="text-sm text-[#9CA3AF] mt-0.5">Manage administrative profile details, equity yield ratios, and secure system access passwords.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -106,7 +125,7 @@ const Settings = () => {
           </form>
         </motion.div>
 
-        {/* CARD 2: RESET PASSWORD */}
+        {/* CARD 2: REVENUE SPLIT CONFIGURATION */}
         <motion.div 
           variants={fadeInUp} 
           initial="hidden" 
@@ -114,11 +133,85 @@ const Settings = () => {
           className="border border-slate-800 bg-[#1F2937] p-6 rounded-none space-y-4"
         >
           <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <Percent size={18} className="text-[#34D399]" />
+            <h3 className="font-bold text-white uppercase tracking-wider text-xs">Revenue Split Allocation</h3>
+          </div>
+
+          <form onSubmit={handleRevenueSplitSave} className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="font-bold text-[#9CA3AF] block">Company Retention (%)</label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    min="0"
+                    max="100"
+                    value={revenueSplit.companyShare}
+                    onChange={(e) => setRevenueSplit({...revenueSplit, companyShare: e.target.value})}
+                    className="w-full pl-3 pr-8 py-2.5 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6] transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">%</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-bold text-[#9CA3AF] block">Investor Yield (%)</label>
+                <div className="relative">
+                  <input 
+                    type="number" 
+                    min="0"
+                    max="100"
+                    value={revenueSplit.investorShare}
+                    onChange={(e) => setRevenueSplit({...revenueSplit, investorShare: e.target.value})}
+                    className="w-full pl-3 pr-8 py-2.5 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6] transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Balance Bar */}
+            <div className="space-y-1.5 pt-1">
+              <div className="flex justify-between font-mono text-[10px] text-slate-500">
+                <span>Company: {revenueSplit.companyShare || 0}%</span>
+                <span>Investors: {revenueSplit.investorShare || 0}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-[#090A0F] flex overflow-hidden">
+                <div 
+                  style={{ width: `${revenueSplit.companyShare}%` }} 
+                  className="bg-[#3B82F6] transition-all duration-300"
+                />
+                <div 
+                  style={{ width: `${revenueSplit.investorShare}%` }} 
+                  className="bg-[#34D399] transition-all duration-300"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button 
+                type="submit"
+                className="flex items-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-xs px-4 py-2.5 rounded-none transition-colors"
+              >
+                <Save size={14} /> Update Split Schema
+              </button>
+            </div>
+          </form>
+        </motion.div>
+
+        {/* CARD 3: RESET PASSWORD */}
+        <motion.div 
+          variants={fadeInUp} 
+          initial="hidden" 
+          animate="visible"
+          className="border border-slate-800 bg-[#1F2937] p-6 rounded-none space-y-4 lg:col-span-2"
+        >
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
             <Shield size={18} className="text-[#34D399]" />
             <h3 className="font-bold text-white uppercase tracking-wider text-xs">Reset Password</h3>
           </div>
 
-          <form onSubmit={handleSecuritySave} className="space-y-4 text-xs">
+          <form onSubmit={handleSecuritySave} className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs items-end">
             <div className="space-y-1.5">
               <label className="font-bold text-[#9CA3AF] block">Current Password</label>
               <div className="relative">
@@ -179,7 +272,7 @@ const Settings = () => {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
+            <div className="md:col-span-3 pt-2 flex justify-end">
               <button 
                 type="submit"
                 className="flex items-center gap-2 bg-[#3B82F6] hover:bg-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-none transition-colors"

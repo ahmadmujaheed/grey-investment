@@ -87,7 +87,7 @@ const DashboardLayout = ({ children }) => {
               G
             </div>
             <span className="text-xl font-bold tracking-tight text-white">
-              Grey <span className="text-[#34D399]">Pools</span>
+              Grey <span className="text-[#34D399]">Investment</span>
             </span>
           </div>
         </div>
@@ -205,7 +205,7 @@ const DashboardLayout = ({ children }) => {
                       G
                     </div>
                     <span className="text-xl font-bold tracking-tight text-white">
-                      Grey <span className="text-[#34D399]">Pools</span>
+                      Grey <span className="text-[#34D399]">Investment</span>
                     </span>
                   </div>
                   <button
