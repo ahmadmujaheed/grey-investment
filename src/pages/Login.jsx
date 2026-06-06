@@ -2,6 +2,7 @@ import { Form, Input, Button, Checkbox } from "antd";
 import { Mail, Lock } from "lucide-react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import investment from "../assets/investment.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,31 +13,32 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex font-sans antialiased selection:bg-emerald-500/10 selection:text-emerald-700">
-      {/* Left Side (Visual Panel) */}
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden">
-        <img
-          src="/investment.jpg"
+    <div className="min-h-screen bg-[#1F1F1F] flex flex-col lg:flex-row font-sans antialiased selection:bg-[#34D399]/10 selection:text-[#34D399]">
+      
+      {/* Visual Panel (Top on Mobile, Left Side on Desktop) */}
+      <div className="w-full lg:w-1/2 h-64 sm:h-80 lg:h-auto relative overflow-hidden">
+        {/* <img
+          src={investment}
           alt="Investment growth illustration"
           className="w-full h-full object-cover"
-        />
+        /> */}
 
         {/* Elegant light-to-dark gradient overlay over the image */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-16">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#090A0F] via-slate-950/20 lg:via-slate-950/40 to-transparent flex flex-col justify-end p-6 sm:p-10 lg:p-16">
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <h1 className="text-6xl font-bold text-white leading-tight tracking-tight">
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-white leading-tight tracking-tight">
               Invest today,
               <br />
-              <span className="text-emerald-400 drop-shadow-sm">
+              <span className="text-[#34D399] drop-shadow-sm">
                 secure tomorrow.
               </span>
             </h1>
 
-            <p className="mt-6 text-slate-200 text-lg max-w-md font-medium leading-relaxed">
+            <p className="mt-2 sm:mt-4 lg:mt-6 text-[#9CA3AF] text-sm sm:text-base lg:text-lg max-w-md font-medium leading-relaxed hidden sm:block">
               Grey Investment helps you grow your wealth with smart strategies
               and real insights.
             </p>
@@ -44,24 +46,24 @@ const Login = () => {
         </div>
       </div>
 
-      {/* Right Side (Form Container) */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center px-6 bg-slate-50">
+      {/* Form Container Panel (Bottom on Mobile, Right Side on Desktop) */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-6 py-10 lg:py-0 bg-[#1F1F1F]">
         <motion.div
-          initial={{ opacity: 0, x: 60 }}
+          initial={{ opacity: 0, x: 30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="w-full max-w-md"
         >
-          {/* Clean white card with a very soft, sophisticated shadow */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-10 shadow-xl shadow-slate-200/50">
+          {/* Dashboard cohesive card layout */}
+          <div className="bg-[#1F2937] border border-slate-800 rounded-none p-6 sm:p-10 shadow-2xl">
             {/* Header / Logo */}
-            <div className="mb-10">
-              <h2 className="text-4xl font-bold text-slate-900 tracking-tight">
-                Grey <span className="text-emerald-600">Investment</span>
+            <div className="mb-8 lg:mb-10">
+              <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
+                Grey <span className="text-[#34D399]">Investment</span>
               </h2>
 
-              <p className="text-slate-500 mt-2 font-medium">
-                Welcome back. Sign in to continue.
+              <p className="text-[#9CA3AF] mt-2 text-xs sm:text-sm font-medium">
+                Welcome back. Sign in to continue to administration.
               </p>
             </div>
 
@@ -69,7 +71,7 @@ const Login = () => {
               {/* Email Field */}
               <Form.Item
                 label={
-                  <span className="text-slate-700 font-semibold tracking-wide text-sm">
+                  <span className="text-[#9CA3AF] font-bold uppercase tracking-wider text-xs">
                     Email
                   </span>
                 }
@@ -87,16 +89,16 @@ const Login = () => {
               >
                 <Input
                   size="large"
-                  prefix={<Mail size={18} className="text-slate-400 mr-2" />}
+                  prefix={<Mail size={16} className="text-[#9CA3AF] mr-2" />}
                   placeholder="name@company.com"
-                  className="h-12 !bg-slate-50 !border-slate-200 !text-slate-900 placeholder:!text-slate-400 hover:!border-emerald-500 focus:!border-emerald-500 focus:!shadow-[0_0_0_2px_rgba(16,185,129,0.15)] transition-all duration-200"
+                  className="h-12 !bg-[#090A0F] !border-slate-800 !text-white placeholder:!text-slate-600 !rounded-none hover:!border-[#3B82F6] focus:!border-[#3B82F6] focus:!shadow-none transition-all duration-200 font-semibold"
                 />
               </Form.Item>
 
               {/* Password Field */}
               <Form.Item
                 label={
-                  <span className="text-slate-700 font-semibold tracking-wide text-sm">
+                  <span className="text-[#9CA3AF] font-bold uppercase tracking-wider text-xs">
                     Password
                   </span>
                 }
@@ -110,33 +112,33 @@ const Login = () => {
               >
                 <Input.Password
                   size="large"
-                  prefix={<Lock size={18} className="text-slate-400 mr-2" />}
+                  prefix={<Lock size={16} className="text-[#9CA3AF] mr-2" />}
                   placeholder="Enter password"
-                  className="h-12 !bg-slate-50 !border-slate-200 !text-slate-900 placeholder:!text-slate-400 hover:!border-emerald-500 focus:!border-emerald-500 focus:!shadow-[0_0_0_2px_rgba(16,185,129,0.15)] transition-all duration-200"
+                  className="h-12 !bg-[#090A0F] !border-slate-800 !text-white placeholder:!text-slate-600 !rounded-none hover:!border-[#3B82F6] focus:!border-[#3B82F6] focus:!shadow-none transition-all duration-200 font-semibold [&_.ant-input-password-icon]:!text-[#9CA3AF]"
                 />
               </Form.Item>
 
               {/* Remember Me & Forgot Password Link */}
-              <div className="flex justify-between items-center mb-8">
-                <Checkbox className="text-slate-500 font-medium [&_.ant-checkbox-checked_.ant-checkbox-inner]:!bg-emerald-600 [&_.ant-checkbox-checked_.ant-checkbox-inner]:!border-emerald-600 [&_.ant-checkbox-wrapper:hover_.ant-checkbox-inner]:!border-emerald-600">
+              <div className="flex justify-between items-center mb-8 text-[11px] sm:text-xs">
+                <Checkbox className="text-[#9CA3AF] font-bold uppercase tracking-wider [&_.ant-checkbox-inner]:!bg-[#090A0F] [&_.ant-checkbox-inner]:!border-slate-800 [&_.ant-checkbox-inner]:!rounded-none [&_.ant-checkbox-checked_.ant-checkbox-inner]:!bg-[#34D399] [&_.ant-checkbox-checked_.ant-checkbox-inner]:!border-[#34D399] [&_.ant-checkbox-wrapper:hover_.ant-checkbox-inner]:!border-[#34D399]">
                   Remember me
                 </Checkbox>
 
                 <button
                   type="button"
-                  className="text-emerald-600 hover:text-emerald-700 text-sm font-semibold transition-colors duration-200"
+                  className="text-[#3B82F6] hover:text-blue-400 font-bold uppercase tracking-wider transition-colors duration-200"
                 >
                   Forgot Password?
                 </button>
               </div>
 
-              {/* Premium Emerald Button */}
+              {/* Cohesive Action Button */}
               <Button
                 htmlType="submit"
                 type="primary"
                 size="large"
                 block
-                className="!h-12 !bg-emerald-600 hover:!bg-emerald-700 active:!bg-emerald-800 !text-white !font-bold !text-base !border-none !rounded-xl shadow-md shadow-emerald-600/10 transition-all duration-200"
+                className="!h-12 !bg-[#34D399] hover:!bg-[#06D6A0] active:!bg-[#06D6A0] !text-[#090A0F] !font-bold !text-xs uppercase tracking-wider !border-none !rounded-none shadow-none transition-all duration-200"
               >
                 Sign In
               </Button>
