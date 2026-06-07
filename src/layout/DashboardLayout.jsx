@@ -2,23 +2,45 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   TrendingUp,
-  Wallet,
   User,
   Settings,
   Menu,
   X,
-  ChevronLeft,
-  ChevronRight,
   LogOut,
   Bell,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Link, useLocation, Outlet } from "react-router-dom";
+import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 
-const DashboardLayout = ({ children }) => {
+// 🔌 Hook into your Zustand Auth Store
+import { useAuthStore } from "../store/useAuthStore";
+
+const DashboardLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Extract state and logout mechanisms from store
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Helper function to extract user name initials for the avatar
+  const getUserInitials = () => {
+    if (!user?.name) return "UI";
+    const names = user.name.trim().split(" ");
+    if (names.length > 1) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase();
+    }
+    return names[0].slice(0, 2).toUpperCase();
+  };
+
+  // Central handle to manage clearing sessions and navigating away
+  const handleLogoutAction = () => {
+    logout();
+    navigate("/", { replace: true });
+  };
 
   // Automatically collapse sidebar on medium screens, and handle mobile breakpoint
   useEffect(() => {
@@ -30,9 +52,7 @@ const DashboardLayout = ({ children }) => {
       }
     };
 
-    // Set initial state
     handleResize();
-
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -65,7 +85,7 @@ const DashboardLayout = ({ children }) => {
       {/* 1. FIXED HEADER */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-[#1F2937] border-b border-slate-800 z-40 flex items-center justify-between px-6 shadow-sm shadow-[#090A0F]">
         <div className="flex items-center gap-4">
-          {/* Mobile Hamburguer Toggle */}
+          {/* Mobile Hamburger Toggle */}
           <button
             onClick={() => setIsMobileOpen(!isMobileOpen)}
             className="lg:hidden p-2 text-[#9CA3AF] hover:bg-[#090A0F] rounded-xl transition-colors"
@@ -101,13 +121,19 @@ const DashboardLayout = ({ children }) => {
 
           <div className="h-8 w-px bg-slate-800" />
 
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#090A0F] border border-slate-800 overflow-hidden flex items-center justify-center font-bold text-[#34D399] text-sm">
-              JD
+          {/* 👤 Live Logged-In User Interface Frame */}
+          <div className="flex items-center gap-3 bg-[#090A0F]/30 pl-2 pr-3 py-1.5 border border-slate-800/40 rounded-full">
+            <div className="w-8 h-8 rounded-full bg-[#090A0F] border border-slate-800 overflow-hidden flex items-center justify-center font-bold text-[#34D399] text-xs uppercase tracking-wider select-none">
+              {getUserInitials()}
             </div>
-            <span className="hidden sm:inline text-sm font-semibold text-white">
-              John Doe
-            </span>
+            <div className="flex flex-col">
+              <span className="hidden sm:inline text-xs font-bold text-white leading-none">
+                {user?.name || "Access User"}
+              </span>
+              <span className="hidden sm:inline text-[10px] text-[#34D399] font-semibold uppercase tracking-widest mt-0.5 leading-none">
+                {user?.role || "guest"}
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -122,12 +148,12 @@ const DashboardLayout = ({ children }) => {
         <div className="px-4 space-y-1.5">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path; // Checks URL to style active link
+            const isActive = location.pathname === item.path;
 
             return (
               <Link
                 key={item.id}
-                to={item.path} // Moves to the next page via URL routing
+                to={item.path}
                 className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm group transition-all cursor-pointer ${
                   isActive
                     ? "bg-[#34D399] text-[#090A0F]"
@@ -159,9 +185,12 @@ const DashboardLayout = ({ children }) => {
           })}
         </div>
 
-        {/* Footer Logout Button */}
+        {/* Footer Logout Button (Desktop) */}
         <div className="px-4">
-          <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm text-rose-400 hover:bg-[#090A0F] transition-colors group">
+          <button 
+            onClick={handleLogoutAction}
+            className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm text-rose-400 hover:bg-[#090A0F] transition-colors group cursor-pointer"
+          >
             <div className="shrink-0">
               <LogOut
                 size={20}
@@ -220,25 +249,35 @@ const DashboardLayout = ({ children }) => {
                 <div className="space-y-1.5">
                   {menuItems.map((item) => {
                     const Icon = item.icon;
+                    const isActive = location.pathname === item.path;
+                    
                     return (
-                      <button
+                      <Link
                         key={item.id}
+                        to={item.path}
                         onClick={() => setIsMobileOpen(false)}
                         className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm ${
-                          item.id === "dashboard"
+                          isActive
                             ? "bg-[#34D399] text-[#090A0F]"
-                            : "text-[#9CA3AF] hover:bg-[#090A0F]"
+                            : "text-[#9CA3AF] hover:bg-[#090A0F] hover:text-white"
                         }`}
                       >
                         <Icon size={20} />
                         <span>{item.label}</span>
-                      </button>
+                      </Link>
                     );
                   })}
                 </div>
               </div>
 
-              <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm text-rose-400 hover:bg-[#090A0F] transition-colors">
+              {/* Footer Logout Button (Mobile) */}
+              <button 
+                onClick={() => {
+                  setIsMobileOpen(false);
+                  handleLogoutAction();
+                }}
+                className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm text-rose-400 hover:bg-[#090A0F] transition-colors cursor-pointer"
+              >
                 <LogOut size={20} />
                 <span>Logout</span>
               </button>

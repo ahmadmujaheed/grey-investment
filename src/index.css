@@ -1,4 +1,38 @@
 @import "tailwindcss";
+
+/* AntD Select component dark mode aesthetics harmonization override */
+.investment-select-dark .ant-select-selector {
+  background-color: #090A0F !important;
+  border-color: #1E293B !important;
+  border-radius: 0px !important;
+  height: 38px !important;
+  display: flex;
+  align-items: center;
+}
+.investment-select-dark .ant-select-selection-placeholder,
+.investment-select-dark .ant-select-selection-item {
+  color: #F3F4F6 !important;
+  font-weight: 600;
+}
+.ant-select-dropdown {
+  background-color: #1F2937 !important;
+  border: 1px solid #1E293B !important;
+  border-radius: 0px !important;
+}
+.ant-select-item-option-content {
+  color: #9CA3AF !important;
+}
+.ant-select-item-option-active {
+  background-color: #090A0F !important;
+}
+.ant-select-item-option-selected {
+  background-color: #34D399 !important;
+}
+.ant-select-item-option-selected .ant-select-item-option-content {
+  color: #090A0F !important;
+  font-weight: bold;
+}
+
 /* :root {
   --text: #6b6375;
   --text-h: #08060d;
