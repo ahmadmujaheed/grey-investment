@@ -60,6 +60,11 @@ const Investment = () => {
   const [gettingArchived, setGettingArchived] = useState(false);
   const [gettingActive, setGettingActive] = useState(false);
 
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+  });
+
   // 1. Fetch main pool listings from the server instances on component mount
   const loadPlatformAssets = async (showSkeleton = false) => {
     try {
@@ -317,8 +322,7 @@ const Investment = () => {
                 onClick={getArchivedInvestments}
                 className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 rounded-none transition-colors shrink-0 cursor-pointer"
               >
-                 {gettingArchived ? "Please Wait..." : "Get Archived Investment"}
-                
+                {gettingArchived ? "Please Wait..." : "Get Archived Investment"}
               </button>
             </div>
           </div>
@@ -702,7 +706,9 @@ const Investment = () => {
                     <button
                       type="submit"
                       disabled={
-                        selectedPackage.status === "completed" || distribute || selectedPackage.status === "archived"
+                        selectedPackage.status === "completed" ||
+                        distribute ||
+                        selectedPackage.status === "archived"
                       }
                       className="w-full py-2.5 bg-[#3B82F6] hover:bg-blue-600 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-sm rounded-none transition-colors mt-2 flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
                     >
@@ -712,7 +718,8 @@ const Investment = () => {
                           <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-1" />
                           Processing Splits...
                         </>
-                      ) : selectedPackage.status === "completed" || selectedPackage.status === "archived" ? (
+                      ) : selectedPackage.status === "completed" ||
+                        selectedPackage.status === "archived" ? (
                         <>
                           <Percent size={14} />
                           Yield Lifecycle Concluded
@@ -757,7 +764,10 @@ const Investment = () => {
                         optionFilterProp="label"
                         value={targetUserId}
                         onChange={(value) => setTargetUserId(value)}
-                        disabled={selectedPackage.status === "completed" || selectedPackage.status === "archived"}
+                        disabled={
+                          selectedPackage.status === "completed" ||
+                          selectedPackage.status === "archived"
+                        }
                         className="w-full h-9 rounded-none"
                         dropdownStyle={{
                           backgroundColor: "#090A0F",
@@ -788,7 +798,10 @@ const Investment = () => {
                         type="number"
                         required
                         value={newInvestorAmount}
-                        disabled={selectedPackage.status === "completed" || selectedPackage.status === "archived"}
+                        disabled={
+                          selectedPackage.status === "completed" ||
+                          selectedPackage.status === "archived"
+                        }
                         onChange={(e) => setNewInvestorAmount(e.target.value)}
                         placeholder="e.g. 500000"
                         className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6] transition-all disabled:opacity-40"
@@ -797,7 +810,10 @@ const Investment = () => {
 
                     <button
                       type="submit"
-                      disabled={selectedPackage.status === "completed" || selectedPackage.status === "archived"}
+                      disabled={
+                        selectedPackage.status === "completed" ||
+                        selectedPackage.status === "archived"
+                      }
                       className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer"
                     >
                       {allocate
