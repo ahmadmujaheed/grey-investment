@@ -15,7 +15,7 @@ import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 // 🔌 Hook into your Zustand Auth Store
 import { useAuthStore } from "../store/useAuthStore";
 
-const DashboardLayout = () => {
+const UserLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -57,26 +57,31 @@ const DashboardLayout = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // ✅ ADJUSTED: Tailored specifically for the investor branch paths
   const menuItems = [
     {
       id: "dashboard",
       label: "Dashboard",
       icon: LayoutDashboard,
-      path: "/dashboard",
+      path: "/user-dashboard", // Main investor home matrix
     },
     {
       id: "investment",
       label: "Investments",
       icon: TrendingUp,
-      path: "/dashboard/investment",
+      path: "/user-dashboard/investment", // Investor personal asset rosters
     },
-    { id: "users", label: "Users", icon: User, path: "/dashboard/users" },
-    { id: "profile", label: "Profile", icon: User, path: "/dashboard/profile" },
+    { 
+      id: "profile", 
+      label: "Profile", 
+      icon: User, 
+      path: "/user-dashboard/user-profile" 
+    },
     {
       id: "settings",
       label: "Settings",
       icon: Settings,
-      path: "/dashboard/settings",
+      path: "/user-dashboard/user-settings", // Security settings profile controls
     },
   ];
 
@@ -131,7 +136,7 @@ const DashboardLayout = () => {
                 {user?.name || "Access User"}
               </span>
               <span className="hidden sm:inline text-[10px] text-[#34D399] font-semibold uppercase tracking-widest mt-0.5 leading-none">
-                {user?.role || "guest"}
+                {user?.role || "user"}
               </span>
             </div>
           </div>
@@ -299,10 +304,11 @@ const DashboardLayout = () => {
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="pt-21 pr-6 pb-12 min-h-screen transition-[padding] duration-300"
       >
+        {/* Render child investor pages here inside App.jsx routing configuration */}
         <Outlet />
       </motion.main>
     </div>
   );
 };
 
-export default DashboardLayout;
+export default UserLayout;

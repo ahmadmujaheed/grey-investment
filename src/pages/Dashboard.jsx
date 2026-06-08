@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   TrendingUp, 
   ArrowUpRight, 
@@ -16,15 +16,10 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from "recharts";
+import { message, Skeleton } from "antd";
 
-// Clean historical earnings data in Naira
-const monthlyEarningsData = [
-  { month: "Jan", NetProfit: 2400000, YourShare: 1080000 },
-  { month: "Feb", NetProfit: 3500000, YourShare: 1575000 },
-  { month: "Mar", NetProfit: 4100000, YourShare: 1845000 },
-  { month: "Apr", NetProfit: 5800000, YourShare: 2610000 },
-  { month: "May", NetProfit: 7200000, YourShare: 3240000 },
-];
+// 🔌 Connects directly to your analytics API layer
+import { fetchDashboardAnalytics } from "../api/analyticsApi";
 
 // Motion animation presets
 const fadeInUp = {
@@ -57,12 +52,79 @@ const formatAxisValues = (num) => {
 };
 
 const Dashboard = () => {
-  // Profit Split Calculator State
+  // 💾 Core Dynamic Data States
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Profit Split Calculator Local State
   const [calcAmount, setCalcAmount] = useState("100000");
   
   const totalProfitGenerated = parseFloat(calcAmount) || 0;
   const companyCut = totalProfitGenerated * 0.55;
   const investorCut = totalProfitGenerated * 0.45;
+
+  // 🔄 Request live backend data calculations on component mount
+  useEffect(() => {
+    const loadSystemAnalytics = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchDashboardAnalytics();
+        setAnalyticsData(data);
+      } catch (err) {
+        message.error(err?.message || "Failed to communicate with analytics engine database nodes.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSystemAnalytics();
+  }, []);
+
+  // 💀 Skeleton Loader View (Perfect Dark Theme Matching)
+  if (loading) {
+    return (
+      <div className="space-y-6 bg-[#1F1F1F] min-h-screen p-4">
+        {/* Header Skeleton */}
+        <div className="space-y-2">
+          <Skeleton.Button active style={{ width: 220, height: 28, backgroundColor: '#2A2A2A' }} />
+          <Skeleton.Input active style={{ width: 420, height: 16, backgroundColor: '#2A2A2A' }} />
+        </div>
+
+        {/* Card Row Skeletons */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-6 border border-slate-800 rounded-xl bg-[#1F2937] h-32 flex flex-col justify-between">
+              <Skeleton.Input active size="small" style={{ width: '60%', backgroundColor: '#2A2A2A' }} />
+              <Skeleton.Button active style={{ width: '80%', height: 32, backgroundColor: '#2A2A2A' }} />
+            </div>
+          ))}
+        </div>
+
+        {/* Main Content Splitted Section Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] h-80 lg:col-span-2 space-y-4">
+            <Skeleton.Input active style={{ width: '40%', backgroundColor: '#2A2A2A' }} />
+            <div className="w-full h-56 bg-[#181F2A] animate-pulse rounded-lg" />
+          </div>
+          <div className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] h-80 flex flex-col justify-between">
+            <Skeleton.Input active style={{ width: '50%', backgroundColor: '#2A2A2A' }} />
+            <div className="space-y-3 w-full">
+              <div className="h-10 bg-[#181F2A] animate-pulse w-full" />
+              <div className="h-20 bg-[#181F2A] animate-pulse w-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Safe fallback bindings if the database response collections match empty states
+  const summary = analyticsData?.summaryCards || { totalAssetUnderManagement: 0, totalRegisteredUsers: 0, totalPoolsDeployed: 0 };
+  const charts = analyticsData?.chartData || [];
+
+  // Derived dashboard company values calculated over real-time database AUM pools
+  const dynamicTotalCompanyCut = summary.totalAssetUnderManagement * 0.55;
+  const dynamicTotalInvestorCut = summary.totalAssetUnderManagement * 0.45;
 
   return (
     <motion.div 
@@ -74,7 +136,10 @@ const Dashboard = () => {
       
       {/* Title Header */}
       <motion.div variants={fadeInUp}>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Investor Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          Investor Dashboard
+          <span className="text-[10px] font-mono bg-[#090A0F] border border-slate-800 text-[#34D399] px-2 py-0.5 font-bold uppercase tracking-widest rounded">LIVE DATA</span>
+        </h1>
         <p className="text-sm text-[#9CA3AF] mt-0.5">Real-time breakdown of your investments and profit distributions.</p>
       </motion.div>
 
@@ -89,10 +154,10 @@ const Dashboard = () => {
           className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
         >
           <div className="space-y-1">
-            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Your Deposited Principal</span>
-            <h3 className="text-2xl font-bold text-white">{formatNaira(10000000)}</h3>
+            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Total Capital AUM</span>
+            <h3 className="text-2xl font-bold text-white">{formatNaira(summary.totalAssetUnderManagement)}</h3>
             <span className="text-xs font-semibold text-[#34D399] flex items-center gap-1">
-              <TrendingUp size={12} /> Actively investing
+              <TrendingUp size={12} /> Actively investing across {summary.totalPoolsDeployed} Pools
             </span>
           </div>
           <div className="w-11 h-11 bg-[#090A0F] text-[#34D399] rounded-lg flex items-center justify-center font-bold text-xl">
@@ -106,9 +171,9 @@ const Dashboard = () => {
           className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
         >
           <div className="space-y-1">
-            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Your Earnings (45% Share)</span>
-            <h3 className="text-2xl font-bold text-[#34D399]">{formatNaira(3240000)}</h3>
-            <span className="text-xs text-[#9CA3AF] block">Total profit paid out to date</span>
+            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Estimated Investor Payout (45%)</span>
+            <h3 className="text-2xl font-bold text-[#34D399]">{formatNaira(dynamicTotalInvestorCut)}</h3>
+            <span className="text-xs text-[#9CA3AF] block">Aggregated yield allocations in tracking matrix</span>
           </div>
           <div className="p-3 bg-[#090A0F] text-[#34D399] rounded-lg">
             <Percent size={20} />
@@ -122,7 +187,7 @@ const Dashboard = () => {
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">Company Management Cut (55%)</span>
-            <h3 className="text-2xl font-bold text-slate-300">{formatNaira(3960000)}</h3>
+            <h3 className="text-2xl font-bold text-slate-300">{formatNaira(dynamicTotalCompanyCut)}</h3>
             <span className="text-xs text-[#9CA3AF] block">Covers platform fees and system maintenance</span>
           </div>
           <div className="p-3 bg-[#090A0F] text-[#9CA3AF] rounded-lg">
@@ -145,20 +210,26 @@ const Dashboard = () => {
           </div>
 
           <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyEarningsData} margin={{ top: 10, right: 5, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} />
-                <XAxis dataKey="month" stroke="#6B7280" fontSize={12} tickLine={false} />
-                <YAxis stroke="#6B7280" fontSize={11} tickLine={false} tickFormatter={formatAxisValues} />
-                <Tooltip 
-                  cursor={{ fill: '#090A0F', opacity: 0.4 }}
-                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#4B5563', color: '#fff' }}
-                  formatter={(value) => [formatNaira(value)]}
-                />
-                <Bar dataKey="NetProfit" fill="#4B5563" radius={[4, 4, 0, 0]} name="Gross Pool Profit" barSize={24} />
-                <Bar dataKey="YourShare" fill="#34D399" radius={[4, 4, 0, 0]} name="Your Payout (45%)" barSize={24} />
-              </BarChart>
-            </ResponsiveContainer>
+            {charts.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-slate-500 font-mono text-xs">
+                No monthly historical investment inflows generated yet.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={charts} margin={{ top: 10, right: 5, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2D3748" vertical={false} />
+                  <XAxis dataKey="month" stroke="#6B7280" fontSize={12} tickLine={false} />
+                  <YAxis stroke="#6B7280" fontSize={11} tickLine={false} tickFormatter={formatAxisValues} />
+                  <Tooltip 
+                    cursor={{ fill: '#090A0F', opacity: 0.4 }}
+                    contentStyle={{ backgroundColor: '#1F2937', borderColor: '#4B5563', color: '#fff', borderRadius: '8px' }}
+                    formatter={(value) => [formatNaira(value)]}
+                  />
+                  <Bar dataKey="NetProfit" fill="#4B5563" radius={[4, 4, 0, 0]} name="Gross Pool Profit" barSize={24} />
+                  <Bar dataKey="YourShare" fill="#34D399" radius={[4, 4, 0, 0]} name="Your Payout (45%)" barSize={24} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </motion.div>
 

@@ -1,20 +1,46 @@
-import { Form, Input, Button, Checkbox } from "antd";
+import { useState } from "react";
+import { Form, Input, Button, Checkbox, message, Spin } from "antd";
 import { Mail, Lock } from "lucide-react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+
+// 🔌 Central API integration Layer & Auth Store configuration hooks
+import { loginUser } from "../api/authApi";
+import { useAuthStore } from "../store/useAuthStore";
 import investment from "../assets/investment.png";
 
 const Login = () => {
   const navigate = useNavigate();
+  const setAuthSession = useAuthStore((state) => state.setAuthSession);
+  const [loading, setLoading] = useState(false);
 
-  const onFinish = (values) => {
-    console.log(values);
-    navigate("/dashboard");
+  // Core execution engine on submitting credentials
+  const onFinish = async (values) => {
+    const { email, password } = values;
+
+    try {
+      setLoading(true);
+      const responseData = await loginUser({ email, password });
+
+      // 🔥 CHANGE THIS LINE to use accessToken
+      setAuthSession(responseData.accessToken, responseData.user);
+
+      message.success(`Welcome back, ${responseData.user.name || "User"}!`);
+
+      if (responseData.user?.role === "admin") {
+        navigate("/dashboard");
+      } else {
+        navigate("/user-dashboard");
+      }
+    } catch (error) {
+      message.error(error.response?.data?.message || "Authentication failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#1F1F1F] flex flex-col lg:flex-row font-sans antialiased selection:bg-[#34D399]/10 selection:text-[#34D399]">
-      
       {/* Visual Panel (Top on Mobile, Left Side on Desktop) */}
       <div className="w-full lg:w-1/2 h-64 sm:h-80 lg:h-auto relative overflow-hidden">
         {/* <img
@@ -89,9 +115,10 @@ const Login = () => {
               >
                 <Input
                   size="large"
+                  disabled={loading}
                   prefix={<Mail size={16} className="text-[#9CA3AF] mr-2" />}
                   placeholder="name@company.com"
-                  className="h-12 !bg-[#090A0F] !border-slate-800 !text-white placeholder:!text-slate-600 !rounded-none hover:!border-[#3B82F6] focus:!border-[#3B82F6] focus:!shadow-none transition-all duration-200 font-semibold"
+                  className="h-12 bg-[#090A0F]! border-slate-800! text-white! placeholder:text-slate-600! rounded-none! hover:border-[#3B82F6]! focus:border-[#3B82F6]! focus:bg-transparent! focus:shadow-none! transition-all duration-200 font-semibold disabled:opacity-50"
                 />
               </Form.Item>
 
@@ -112,21 +139,26 @@ const Login = () => {
               >
                 <Input.Password
                   size="large"
+                  disabled={loading}
                   prefix={<Lock size={16} className="text-[#9CA3AF] mr-2" />}
                   placeholder="Enter password"
-                  className="h-12 !bg-[#090A0F] !border-slate-800 !text-white placeholder:!text-slate-600 !rounded-none hover:!border-[#3B82F6] focus:!border-[#3B82F6] focus:!shadow-none transition-all duration-200 font-semibold [&_.ant-input-password-icon]:!text-[#9CA3AF]"
+                  className="h-12 !bg-[#090A0F] !border-slate-800 !text-white placeholder:!text-slate-600 !rounded-none hover:!border-[#3B82F6] focus:!border-[#3B82F6] focus:!shadow-none transition-all duration-200 font-semibold [&_.ant-input-password-icon]:!text-[#9CA3AF] disabled:opacity-50"
                 />
               </Form.Item>
 
               {/* Remember Me & Forgot Password Link */}
               <div className="flex justify-between items-center mb-8 text-[11px] sm:text-xs">
-                <Checkbox className="text-[#9CA3AF] font-bold uppercase tracking-wider [&_.ant-checkbox-inner]:!bg-[#090A0F] [&_.ant-checkbox-inner]:!border-slate-800 [&_.ant-checkbox-inner]:!rounded-none [&_.ant-checkbox-checked_.ant-checkbox-inner]:!bg-[#34D399] [&_.ant-checkbox-checked_.ant-checkbox-inner]:!border-[#34D399] [&_.ant-checkbox-wrapper:hover_.ant-checkbox-inner]:!border-[#34D399]">
+                <Checkbox
+                  disabled={loading}
+                  className="text-[#9CA3AF] font-bold uppercase tracking-wider [&_.ant-checkbox-inner]:!bg-[#090A0F] [&_.ant-checkbox-inner]:!border-slate-800 [&_.ant-checkbox-inner]:!rounded-none [&_.ant-checkbox-checked_.ant-checkbox-inner]:!bg-[#34D399] [&_.ant-checkbox-checked_.ant-checkbox-inner]:!border-[#34D399] [&_.ant-checkbox-wrapper:hover_.ant-checkbox-inner]:!border-[#34D399] disabled:opacity-50"
+                >
                   Remember me
                 </Checkbox>
 
                 <button
                   type="button"
-                  className="text-[#3B82F6] hover:text-blue-400 font-bold uppercase tracking-wider transition-colors duration-200"
+                  disabled={loading}
+                  className="text-[#3B82F6] hover:text-blue-400 font-bold uppercase tracking-wider transition-colors duration-200 disabled:opacity-40"
                 >
                   Forgot Password?
                 </button>
@@ -138,9 +170,14 @@ const Login = () => {
                 type="primary"
                 size="large"
                 block
-                className="!h-12 !bg-[#34D399] hover:!bg-[#06D6A0] active:!bg-[#06D6A0] !text-[#090A0F] !font-bold !text-xs uppercase tracking-wider !border-none !rounded-none shadow-none transition-all duration-200"
+                disabled={loading}
+                className="!h-12 !bg-[#34D399] hover:!bg-[#06D6A0] active:!bg-[#06D6A0] !text-[#090A0F] !font-bold !text-xs uppercase tracking-wider !border-none !rounded-none shadow-none transition-all duration-200 flex items-center justify-center gap-2 disabled:bg-slate-800 disabled:text-slate-500"
               >
-                Sign In
+                {loading ? (
+                  <Spin size="small" className="text-[#090A0F]" />
+                ) : (
+                  "Sign In"
+                )}
               </Button>
             </Form>
           </div>
