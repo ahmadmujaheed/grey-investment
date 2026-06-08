@@ -607,12 +607,12 @@ const Investment = () => {
                             className="flex justify-between items-center text-sm py-3 first:pt-0 last:pb-0 group/row"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-none bg-[#090A0F] text-[#34D399] font-bold flex items-center justify-center text-xs uppercase">
+                              <div className="w-8 h-8 rounded-full bg-[#090A0F] text-[#34D399] font-bold flex items-center justify-center text-lg capitalize shrink-0">
                                 {inv.user?.name ? inv.user.name.charAt(0) : "U"}
                               </div>
                               <div>
                                 {/* 👥 Swapped text out to render clean user details instead of raw ID */}
-                                <span className="text-xs font-bold text-white block truncate max-w-xs">
+                                <span className="text-xs font-bold capitalize text-white block truncate max-w-xs">
                                   {inv.user?.name || "Unknown User"}
                                 </span>
                                 <span className="text-[10px] text-[#9CA3AF] font-medium block">

@@ -213,7 +213,7 @@ const Users = () => {
                   </div>
                   <div>
                     <span className="text-xs font-semibold text-[#9CA3AF] block">Total Profiles</span>
-                    <span className="text-lg font-extrabold text-white">{totalUsersCount} Users</span>
+                    <span className="text-lg font-semibold text-white">{totalUsersCount} Users</span>
                   </div>
                 </div>
 
@@ -223,7 +223,7 @@ const Users = () => {
                   </div>
                   <div>
                     <span className="text-xs font-semibold text-[#9CA3AF] block">Funded Stakeholders</span>
-                    <span className="text-lg font-extrabold text-white">{activeInvestorsCount} Active</span>
+                    <span className="text-lg font-semibold text-white">{activeInvestorsCount} Active</span>
                   </div>
                 </div>
 
@@ -233,7 +233,7 @@ const Users = () => {
                   </div>
                   <div>
                     <span className="text-xs font-semibold text-[#9CA3AF] block">Total Asset Volume</span>
-                    <span className="text-lg font-extrabold text-white">₦{totalPlatformCapital.toLocaleString()}</span>
+                    <span className="text-lg font-semibold text-white">₦{totalPlatformCapital.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -284,12 +284,12 @@ const Users = () => {
                         >
                           <td className="p-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-none bg-[#090A0F] text-white font-bold flex items-center justify-center text-xs shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-[#090A0F] text-white font-semibold flex items-center justify-center text-lg capitalize shrink-0">
                                 {user.name ? user.name.charAt(0) : "?"}
                               </div>
                               <div>
-                                <div className="font-bold text-white text-sm">{user.name}</div>
-                                <div className="text-[10px] text-[#9CA3AF] font-mono tracking-wide">ID: #{user.id || user._id}</div>
+                                <div className="font-semibold capitalize text-white text-sm">{user.name}</div>
+                                {/* <div className="text-[10px] text-[#9CA3AF] font-mono tracking-wide">ID: #{user.id || user._id}</div> */}
                               </div>
                             </div>
                           </td>
@@ -297,7 +297,7 @@ const Users = () => {
                           <td className="p-4 space-y-0.5">
                             <div className="flex items-center gap-1.5 text-[#9CA3AF]">
                               <Mail size={12} className="text-[#9CA3AF] shrink-0" />
-                              <span className="truncate max-w-[160px]">{user.email}</span>
+                              <span className="truncate max-w-40">{user.email}</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[#9CA3AF]">
                               <Phone size={12} className="text-[#9CA3AF] shrink-0" />
@@ -366,11 +366,11 @@ const Users = () => {
             {/* Compact Identification Card */}
             <div className="border border-slate-800 bg-[#1F2937] p-4 flex flex-wrap justify-between items-center gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#090A0F] text-white font-bold flex items-center justify-center text-base shrink-0">
+                <div className="w-10 h-10 bg-[#090A0F] text-white font-bold flex items-center justify-center text-lg shrink-0">
                   {selectedUser.name ? selectedUser.name.charAt(0) : "?"}
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-white tracking-tight">{selectedUser.name}</h2>
+                  <h2 className="text-lg font-semibold capitalize text-white tracking-tight">{selectedUser.name}</h2>
                   <div className="flex items-center gap-x-3 text-[11px] text-[#9CA3AF] font-medium">
                     <span className="flex items-center gap-1"><Mail size={11} className="text-[#9CA3AF]" /> {selectedUser.email}</span>
                     <span className="flex items-center gap-1"><Phone size={11} className="text-[#9CA3AF]" /> {selectedUser.phone}</span>
@@ -432,7 +432,7 @@ const Users = () => {
                       <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
                         {selectedUser.investmentsList.map((inv, idx) => (
                           <tr key={inv.reference || idx} className="hover:bg-[#1F2937]/40">
-                            <td className="p-2 font-bold text-white">{inv.poolName}</td>
+                            <td className="p-2 font-bold capitalize text-white">{inv.poolName}</td>
                             <td className="p-2 text-right font-mono text-white">₦{inv.amount.toLocaleString()}</td>
                             <td className="p-2 text-right font-mono text-[#34D399] font-bold">₦{inv.yieldEarned.toLocaleString()}</td>
                           </tr>
