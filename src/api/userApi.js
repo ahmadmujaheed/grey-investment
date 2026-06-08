@@ -16,6 +16,7 @@ export const fetchUserById = async (userId) => {
 export const provisionNewUser = async (userData) => {
   // userData structure: { name, email, phone }
   const response = await apiClient.post("/users", userData);
+  console.log(response);
   return response.data;
 };
 

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { Upload, message, Popconfirm, Skeleton, Select } from "antd";
+import { HiOutlineArchiveBoxArrowDown } from "react-icons/hi2";
 
 // 🔌 Import your live central API layer operations
 import {
@@ -19,8 +20,10 @@ import {
   createInvestment,
   allocateInvestorToPool,
   distributeInvestmentProfits,
-  deleteInvestmentPackage,
+  archiveInvestmentPackage,
   fetchAllUsers,
+  fetchArchivedInvestments,
+  restoreInvestmentPackage,
 } from "../api/investmentApi";
 
 const fadeInUp = {
@@ -51,6 +54,11 @@ const Investment = () => {
 
   // Profit distribution context logic parameters
   const [inputProfitAmount, setInputProfitAmount] = useState("");
+
+  const [investmentStatus, setInvestmentStatus] = useState("");
+
+  const [gettingArchived, setGettingArchived] = useState(false);
+  const [gettingActive, setGettingActive] = useState(false);
 
   // 1. Fetch main pool listings from the server instances on component mount
   const loadPlatformAssets = async (showSkeleton = false) => {
@@ -151,10 +159,10 @@ const Investment = () => {
   };
 
   // 3. DELETE: Deletes an asset package completely
-  const handleDeletePackage = async (packageId) => {
+  const handleArchivePackage = async (packageId) => {
     try {
       setLoading(true);
-      await deleteInvestmentPackage(packageId);
+      await archiveInvestmentPackage(packageId);
       message.warning("Investment package tier removed from platform catalog.");
 
       if (selectedPackage && selectedPackage._id === packageId) {
@@ -205,6 +213,34 @@ const Investment = () => {
       );
     } finally {
       setAllocate(false);
+    }
+  };
+
+  const getArchivedInvestments = async () => {
+    try {
+      setGettingArchived(true);
+      const data = await fetchArchivedInvestments();
+      // console.log("Archived Investments:", data);
+      setPackages(data);
+      // setSelectedPackage(data); // Clear any selected package to avoid mismatch with active list
+      // We set a state to track that we are viewing archived items
+      setInvestmentStatus("archived");
+    } catch (error) {
+      message.error("Failed to load archived investment packages.");
+    } finally {
+      setGettingArchived(false);
+    }
+  };
+
+  const getActiveInvestments = async () => {
+    try {
+      setGettingActive(true);
+      const data = await fetchAllInvestments();
+      setPackages(data);
+    } catch (error) {
+      message.error("Failed to load active investment packages.");
+    } finally {
+      setGettingActive(false);
     }
   };
 
@@ -263,13 +299,28 @@ const Investment = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 rounded-none transition-colors shrink-0 cursor-pointer"
-            >
-              <Plus size={16} />
-              Create Investment
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsCreateOpen(true)}
+                className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 rounded-none transition-colors shrink-0 cursor-pointer"
+              >
+                <Plus size={16} />
+                Create Investment
+              </button>
+              <button
+                onClick={getActiveInvestments}
+                className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 rounded-none transition-colors shrink-0 cursor-pointer"
+              >
+                {gettingActive ? "Please Wait..." : "Get Active Investment"}
+              </button>
+              <button
+                onClick={getArchivedInvestments}
+                className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 rounded-none transition-colors shrink-0 cursor-pointer"
+              >
+                 {gettingArchived ? "Please Wait..." : "Get Archived Investment"}
+                
+              </button>
+            </div>
           </div>
 
           {loading && packages.length === 0 ? (
@@ -327,30 +378,35 @@ const Investment = () => {
                         className="absolute top-2 right-2 z-10"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Popconfirm
-                          title="Delete Investment Package"
-                          description="Are you absolutely sure you want to drop this tier package from the platform database catalog completely?"
-                          onConfirm={() => handleDeletePackage(pkg._id)}
-                          okText="Yes, Delete"
-                          cancelText="Cancel"
-                          placement="topRight"
-                          okButtonProps={{
-                            danger: true,
-                            className:
-                              "bg-rose-600 hover:bg-rose-500 rounded-none text-xs font-semibold",
-                          }}
-                          cancelButtonProps={{
-                            className:
-                              "border-slate-700 text-slate-300 hover:text-white rounded-none text-xs",
-                          }}
-                        >
-                          <button
-                            title="Delete Investment Package"
-                            className="bg-[#090A0F]/80 border border-slate-800 p-2 text-[#9CA3AF] hover:text-rose-400 hover:bg-[#090A0F] transition-all cursor-pointer"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </Popconfirm>
+                        {pkg.status !== "archived" && (
+                          <div className="flex items-center gap-3">
+                            <Popconfirm
+                              title="Archive Investment Package"
+                              description="Are you absolutely sure you want to archive this investment package?"
+                              onConfirm={() => handleArchivePackage(pkg._id)}
+                              okText="Yes, Archive"
+                              cancelText="Cancel"
+                              placement="bottomRight"
+                              okButtonProps={{
+                                danger: true,
+                                className:
+                                  "bg-rose-600 hover:bg-rose-500 rounded-none text-xs font-semibold",
+                              }}
+                              cancelButtonProps={{
+                                className:
+                                  "border-slate-700 text-slate-300 hover:text-white rounded-none text-xs",
+                              }}
+                            >
+                              <button className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 transition-colors cursor-pointer">
+                                <HiOutlineArchiveBoxArrowDown size={13} />
+                              </button>
+                            </Popconfirm>
+
+                            {/* <span className="text-xs font-mono bg-[#1F2937] text-[#9CA3AF] px-2 py-1 uppercase tracking-wider border border-slate-800">
+        Asset ID: #{pkg._id}
+      </span> */}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -432,34 +488,36 @@ const Investment = () => {
               <span>Back to Packages</span>
             </button>
 
-            <div className="flex items-center gap-3">
-              <Popconfirm
-                title="Delete Investment Package"
-                description="Are you absolutely sure you want to drop this tier package from the platform database catalog completely?"
-                onConfirm={() => handleDeletePackage(selectedPackage._id)}
-                okText="Yes, Delete"
-                cancelText="Cancel"
-                placement="bottomRight"
-                okButtonProps={{
-                  danger: true,
-                  className:
-                    "bg-rose-600 hover:bg-rose-500 rounded-none text-xs font-semibold",
-                }}
-                cancelButtonProps={{
-                  className:
-                    "border-slate-700 text-slate-300 hover:text-white rounded-none text-xs",
-                }}
-              >
-                <button className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 transition-colors cursor-pointer">
-                  <Trash2 size={13} />
-                  Delete Package
-                </button>
-              </Popconfirm>
+            {selectedPackage.status !== "archived" && (
+              <div className="flex items-center gap-3">
+                <Popconfirm
+                  title="Archive Investment Package"
+                  description="Are you absolutely sure you want to archive this investment package?"
+                  onConfirm={() => handleArchivePackage(selectedPackage._id)}
+                  okText="Yes, Archive"
+                  cancelText="Cancel"
+                  placement="bottomRight"
+                  okButtonProps={{
+                    danger: true,
+                    className:
+                      "bg-rose-600 hover:bg-rose-500 rounded-none text-xs font-semibold",
+                  }}
+                  cancelButtonProps={{
+                    className:
+                      "border-slate-700 text-slate-300 hover:text-white rounded-none text-xs",
+                  }}
+                >
+                  <button className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 transition-colors cursor-pointer">
+                    <HiOutlineArchiveBoxArrowDown size={13} />
+                    Archive Package
+                  </button>
+                </Popconfirm>
 
-              <span className="text-xs font-mono bg-[#1F2937] text-[#9CA3AF] px-2 py-1 uppercase tracking-wider border border-slate-800">
-                Asset ID: #{selectedPackage._id}
-              </span>
-            </div>
+                <span className="text-xs font-mono bg-[#1F2937] text-[#9CA3AF] px-2 py-1 uppercase tracking-wider border border-slate-800">
+                  Asset ID: #{selectedPackage._id}
+                </span>
+              </div>
+            )}
           </div>
 
           {loading && packages.length === 0 ? (
@@ -644,8 +702,7 @@ const Investment = () => {
                     <button
                       type="submit"
                       disabled={
-                        selectedPackage.status === "completed" ||
-                        distribute
+                        selectedPackage.status === "completed" || distribute || selectedPackage.status === "archived"
                       }
                       className="w-full py-2.5 bg-[#3B82F6] hover:bg-blue-600 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-sm rounded-none transition-colors mt-2 flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
                     >
@@ -655,7 +712,7 @@ const Investment = () => {
                           <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-1" />
                           Processing Splits...
                         </>
-                      ) : selectedPackage.status === "completed" ? (
+                      ) : selectedPackage.status === "completed" || selectedPackage.status === "archived" ? (
                         <>
                           <Percent size={14} />
                           Yield Lifecycle Concluded
@@ -672,80 +729,83 @@ const Investment = () => {
 
                 {/* PANEL: Allocation Engine Node Form */}
                 {/* PANEL: Allocation Engine Node Form */}
-<div className="border border-slate-800 bg-[#1F2937] p-5 space-y-4 rounded-none">
-  <div className="flex items-center gap-2 text-white">
-    <UserPlus size={18} className="text-[#34D399]" />
-    <h3 className="font-bold text-base">Add User to Pool</h3>
-  </div>
-  <p className="text-xs text-[#9CA3AF] leading-relaxed">
-    Allocate collected capital holdings into this active
-    platform asset pool. Choose a target platform user registry
-    entry.
-  </p>
+                <div className="border border-slate-800 bg-[#1F2937] p-5 space-y-4 rounded-none">
+                  <div className="flex items-center gap-2 text-white">
+                    <UserPlus size={18} className="text-[#34D399]" />
+                    <h3 className="font-bold text-base">Add User to Pool</h3>
+                  </div>
+                  <p className="text-xs text-[#9CA3AF] leading-relaxed">
+                    Allocate collected capital holdings into this active
+                    platform asset pool. Choose a target platform user registry
+                    entry.
+                  </p>
 
-  <form
-    onSubmit={handleAddInvestor}
-    className="space-y-4 text-xs"
-  >
-    <div className="space-y-1.5">
-      <label className="font-bold text-[#9CA3AF] block">
-        Select Platform Member
-      </label>
-      
-      {/* 🌟 Ant Design Select with full Tailwind styles and targeted token overrides */}
-      <Select
-        showSearch
-        loading={usersLoading}
-        placeholder="Search by name or email context..."
-        optionFilterProp="label"
-        value={targetUserId}
-        onChange={(value) => setTargetUserId(value)}
-        disabled={selectedPackage.status === "completed"}
-        className="w-full h-9 rounded-none"
-        dropdownStyle={{ backgroundColor: '#090A0F', border: '1px solid #1E293B' }}
-        styles={{
-          control: (base) => ({
-            ...base,
-            backgroundColor: '#090A0F',
-            borderColor: '#1E293B',
-            borderRadius: '0px',
-            color: '#FFFFFF'
-          })
-        }}
-        /* 👇 FIX: Swapped user._id to user.id to match your backend formatted payload structural outputs */
-        options={users.map((user) => ({
-          value: user.id, 
-          label: `${user.name || "Unnamed User"} (${user.email || "No email"})`,
-        }))}
-      />
-    </div>
+                  <form
+                    onSubmit={handleAddInvestor}
+                    className="space-y-4 text-xs"
+                  >
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-[#9CA3AF] block">
+                        Select Platform Member
+                      </label>
 
-    <div className="space-y-1.5">
-      <label className="font-bold text-[#9CA3AF] block">
-        Injected Capital Holding (₦)
-      </label>
-      <input
-        type="number"
-        required
-        value={newInvestorAmount}
-        disabled={selectedPackage.status === "completed"}
-        onChange={(e) => setNewInvestorAmount(e.target.value)}
-        placeholder="e.g. 500000"
-        className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6] transition-all disabled:opacity-40"
-      />
-    </div>
+                      {/* 🌟 Ant Design Select with full Tailwind styles and targeted token overrides */}
+                      <Select
+                        showSearch
+                        loading={usersLoading}
+                        placeholder="Search by name or email context..."
+                        optionFilterProp="label"
+                        value={targetUserId}
+                        onChange={(value) => setTargetUserId(value)}
+                        disabled={selectedPackage.status === "completed" || selectedPackage.status === "archived"}
+                        className="w-full h-9 rounded-none"
+                        dropdownStyle={{
+                          backgroundColor: "#090A0F",
+                          border: "1px solid #1E293B",
+                        }}
+                        styles={{
+                          control: (base) => ({
+                            ...base,
+                            backgroundColor: "#090A0F",
+                            borderColor: "#1E293B",
+                            borderRadius: "0px",
+                            color: "#FFFFFF",
+                          }),
+                        }}
+                        /* 👇 FIX: Swapped user._id to user.id to match your backend formatted payload structural outputs */
+                        options={users.map((user) => ({
+                          value: user.id,
+                          label: `${user.name || "Unnamed User"} (${user.email || "No email"})`,
+                        }))}
+                      />
+                    </div>
 
-    <button
-      type="submit"
-      disabled={selectedPackage.status === "completed"}
-      className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer"
-    >
-      {allocate
-        ? "Allocating to Pool..."
-        : "Confirm Allocation"}
-    </button>
-  </form>
-</div>
+                    <div className="space-y-1.5">
+                      <label className="font-bold text-[#9CA3AF] block">
+                        Injected Capital Holding (₦)
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        value={newInvestorAmount}
+                        disabled={selectedPackage.status === "completed" || selectedPackage.status === "archived"}
+                        onChange={(e) => setNewInvestorAmount(e.target.value)}
+                        placeholder="e.g. 500000"
+                        className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6] transition-all disabled:opacity-40"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={selectedPackage.status === "completed" || selectedPackage.status === "archived"}
+                      className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer"
+                    >
+                      {allocate
+                        ? "Allocating to Pool..."
+                        : "Confirm Allocation"}
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           )}

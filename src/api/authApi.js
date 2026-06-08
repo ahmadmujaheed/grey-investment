@@ -15,7 +15,7 @@ export const registerUser = async (userData) => {
  */
 export const loginUser = async (credentials) => {
   const response = await apiClient.post("/auth/login", credentials);
-  return response.data; 
+  return response.data;
 };
 
 /**
@@ -23,5 +23,19 @@ export const loginUser = async (credentials) => {
  */
 export const getUserProfile = async () => {
   const response = await apiClient.get("/auth/profile");
+  return response.data;
+};
+
+/**
+ * Updates the logged-in user's account password credentials safely.
+ * @param {Object} passwordData - Container holding currentPassword and newPassword strings
+ * @returns {Promise<Object>} Backend node execution data payload
+ */
+export const updateUserPassword = async (passwordData) => {
+  const response = await apiClient.put(
+    "/users/change-password",
+    passwordData,
+    { withCredentials: true },
+  );
   return response.data;
 };
