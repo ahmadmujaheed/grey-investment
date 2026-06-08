@@ -20,11 +20,16 @@ import UserSettings from "./pages/investor/Settings";
 import UserProfile from "./pages/investor/Profile";
 
 
+import ScrollToTop from "./components/ScrollToTop";
+
+
 // Security Component
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const App = () => {
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       {/* 🔓 Public Entry Route */}
       <Route path="/" element={<Login />} />
@@ -62,6 +67,7 @@ const App = () => {
         } 
       />
     </Routes>
+    </>
   );
 };
 
