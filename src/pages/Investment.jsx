@@ -14,6 +14,7 @@ import { motion } from "motion/react";
 import { Upload, message, Popconfirm, Skeleton, Select } from "antd";
 import { HiOutlineArchiveBoxArrowDown } from "react-icons/hi2";
 import { IoCloseOutline } from "react-icons/io5";
+import { FaRegEdit } from "react-icons/fa";
 
 // 🔌 Import your live central API layer operations
 import {
@@ -26,6 +27,7 @@ import {
   fetchArchivedInvestments,
   restoreInvestmentPackage,
   removeUserFromPool,
+  editInvestment,
 } from "../api/investmentApi";
 
 const fadeInUp = {
@@ -68,6 +70,20 @@ const Investment = () => {
   });
 
   const [isRemoving, setIsRemoving] = useState(false);
+
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
+  const [companyPercent, setCompanyPercent] = useState(""); // Defaulting to your example
+  const [investorPercent, setInvestorPercent] = useState("");
+
+  const openEditModal = (pkg) => {
+    setNewName(pkg.title);
+    setNewAmount(pkg.targetAmount);
+    setEditingId(pkg._id);
+    setIsEditMode(true);
+    setIsCreateOpen(true);
+  };
 
   // 1. Fetch main pool listings from the server instances on component mount
   const loadPlatformAssets = async (showSkeleton = false) => {
@@ -129,33 +145,69 @@ const Investment = () => {
   };
 
   // 2. CREATE: Deploys fresh package structure using form payload context mapping
-  const handleCreateInvestment = async (e) => {
-    e.preventDefault();
-    if (!newName || !newAmount) return;
+  // const handleCreateInvestment = async (e) => {
+  //   e.preventDefault();
+  //   if (!newName || !newAmount) return;
 
+  //   try {
+  //     setLoading(true);
+  //     const payloadFormData = new FormData();
+  //     payloadFormData.append("title", newName);
+  //     payloadFormData.append("targetAmount", newAmount);
+  //     if (rawUploadFile) {
+  //       payloadFormData.append("image", rawUploadFile);
+  //     }
+
+  //     await createInvestment(payloadFormData);
+  //     message.success("Investment package deployed successfully!");
+
+  //     setNewName("");
+  //     setNewAmount("");
+  //     setRawUploadFile(null);
+  //     setPreviewImageUrl("");
+  //     setIsCreateOpen(false);
+
+  //     await loadPlatformAssets(true);
+  //   } catch (error) {
+  //     message.error(
+  //       error.response?.data?.message || "Error creating package tier.",
+  //     );
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  const handleSaveInvestment = async (e) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      setLoading(true);
-      const payloadFormData = new FormData();
-      payloadFormData.append("title", newName);
-      payloadFormData.append("targetAmount", newAmount);
-      if (rawUploadFile) {
-        payloadFormData.append("image", rawUploadFile);
+      const formData = new FormData();
+      formData.append("title", newName);
+      formData.append("targetAmount", newAmount);
+      if (rawUploadFile) formData.append("image", rawUploadFile);
+
+      if (isEditMode) {
+        // 1. Await the response from your backend
+        const response = await editInvestment(editingId, formData);
+        message.success("Investment updated!");
+
+        // 2. CRITICAL: Update the detailed view state directly
+        if (selectedPackage && selectedPackage._id === editingId) {
+          setSelectedPackage(response.package); // This forces the progress bar to recalculate
+        }
+      } else {
+        await createInvestment(formData);
+        message.success("Investment created!");
       }
 
-      await createInvestment(payloadFormData);
-      message.success("Investment package deployed successfully!");
-
-      setNewName("");
-      setNewAmount("");
-      setRawUploadFile(null);
-      setPreviewImageUrl("");
-      setIsCreateOpen(false);
-
+      // 3. Refresh the full list to ensure the gallery is accurate
       await loadPlatformAssets(true);
+
+      // Close modal and reset
+      setIsCreateOpen(false);
+      setIsEditMode(false);
     } catch (error) {
-      message.error(
-        error.response?.data?.message || "Error creating package tier.",
-      );
+      message.error("Operation failed.");
     } finally {
       setLoading(false);
     }
@@ -236,77 +288,100 @@ const Investment = () => {
   // };
 
   const getArchivedInvestments = async () => {
-    try {
-      setGettingArchived(true);
-      const response = await fetchArchivedInvestments();
-
-      // FIX: Ensure you are setting an array
-      setPackages(Array.isArray(response) ? response : response.data);
-      setInvestmentStatus("archived");
-    } catch (error) {
-      message.error("Failed to load archived investment packages.");
-    } finally {
-      setGettingArchived(false);
-    }
-  };
+  try {
+    setGettingArchived(true);
+    const response = await fetchArchivedInvestments();
+    // Ensure we always set an array
+    setPackages(Array.isArray(response) ? response : (response.data || []));
+    setInvestmentStatus("archived");
+  } catch (error) {
+    message.error("Failed to load archived investment packages.");
+  } finally {
+    setGettingArchived(false);
+  }
+};
 
   const getActiveInvestments = async () => {
-    try {
-      setGettingActive(true);
-      const data = await fetchAllInvestments();
-      setPackages(data);
-    } catch (error) {
-      message.error("Failed to load active investment packages.");
-    } finally {
-      setGettingActive(false);
-    }
-  };
+  try {
+    setGettingActive(true);
+    const response = await fetchAllInvestments();
+    // Ensure we always set an array
+    setPackages(Array.isArray(response) ? response : (response.data || []));
+    setInvestmentStatus("active");
+  } catch (error) {
+    message.error("Failed to load active investment packages.");
+  } finally {
+    setGettingActive(false);
+  }
+};
 
   // 5. DISTRIBUTE: Triggers equity splits and ends funding cycle
+  // const handleDistributeProfit = async (e) => {
+  //   e.preventDefault();
+  //   const profit = parseFloat(inputProfitAmount);
+
+  //   setDistribute(true);
+
+  //   if (!profit || profit <= 0) {
+  //     message.error("Please enter a valid profit distribution value.");
+  //     return;
+  //   }
+
+  //   try {
+  //     // setLoading(true);
+  //     const data = await distributeInvestmentProfits(
+  //       selectedPackage._id,
+  //       profit,
+  //     );
+
+  //     const companyShare = profit * 0.55;
+  //     const investorsTotalShare = profit * 0.45;
+
+  //     message.success(
+  //       `Split Logged: ₦${companyShare.toLocaleString()} (55%) to corporate vault & ₦${investorsTotalShare.toLocaleString()} (45%) added to investor stakes.`,
+  //     );
+
+  //     setSelectedPackage(data.updatedPackage);
+  //     setInputProfitAmount("");
+  //     await loadPlatformAssets(false);
+  //   } catch (error) {
+  //     message.error(
+  //       error.response?.data?.message ||
+  //         "Profit allocation process initialization failure.",
+  //     );
+  //   } finally {
+  //     setDistribute(false);
+  //   }
+  // };
   const handleDistributeProfit = async (e) => {
     e.preventDefault();
-    const profit = parseFloat(inputProfitAmount);
-
     setDistribute(true);
-
-    if (!profit || profit <= 0) {
-      message.error("Please enter a valid profit distribution value.");
-      return;
-    }
-
     try {
-      // setLoading(true);
-      const data = await distributeInvestmentProfits(
-        selectedPackage._id,
-        profit,
-      );
+      const response = await distributeInvestmentProfits(selectedPackage._id, {
+        totalProfit: inputProfitAmount,
+        companyShare: companyPercent,
+        investorShare: investorPercent,
+      });
 
-      const companyShare = profit * 0.55;
-      const investorsTotalShare = profit * 0.45;
-
-      message.success(
-        `Split Logged: ₦${companyShare.toLocaleString()} (55%) to corporate vault & ₦${investorsTotalShare.toLocaleString()} (45%) added to investor stakes.`,
-      );
-
-      setSelectedPackage(data.updatedPackage);
-      setInputProfitAmount("");
-      await loadPlatformAssets(false);
+      // Update your local state so the table re-renders instantly
+      setSelectedPackage(response.updatedPackage);
+      message.success("Profit distribution and roster updated!");
+      // setIsDistributeOpen(false);
     } catch (error) {
-      message.error(
-        error.response?.data?.message ||
-          "Profit allocation process initialization failure.",
-      );
+      message.error("Failed to update roster");
     } finally {
       setDistribute(false);
     }
   };
+
+  console.log(selectedPackage);
 
   const removeInvestor = async (userId) => {
     try {
       setIsRemoving(true);
       await removeUserFromPool(selectedPackage._id, userId);
       message.success("Investor removed from pool roster successfully!");
-
+      console.log(selectedPackage._id, userId);
       // 1. Calculate the new totalAmount by summing the remaining investors
       const updatedInvestors = selectedPackage.investors.filter(
         (inv) => inv.user._id !== userId,
@@ -339,6 +414,7 @@ const Investment = () => {
     }
   };
 
+  // console.log(selectedPackage);
 
   return (
     <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF] p-4">
@@ -358,7 +434,12 @@ const Investment = () => {
 
             <div className="flex gap-2">
               <button
-                onClick={() => setIsCreateOpen(true)}
+                onClick={() => {
+                  setIsEditMode(false);
+                  setNewName("");
+                  setNewAmount("");
+                  setIsCreateOpen(true);
+                }}
                 className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 rounded-none transition-colors shrink-0 cursor-pointer"
               >
                 <Plus size={16} />
@@ -404,8 +485,7 @@ const Investment = () => {
           ) : packages.length === 0 ? (
             <div className="text-center py-12 border border-dashed border-slate-800 bg-[#1F2937]/30">
               <p className="text-sm italic text-[#9CA3AF]">
-                No active investment packages deployed on server database
-                environments yet.
+                No archived investment packages yet.
               </p>
             </div>
           ) : (
@@ -569,9 +649,17 @@ const Investment = () => {
                   </button>
                 </Popconfirm>
 
-                <span className="text-xs font-mono bg-[#1F2937] text-[#9CA3AF] px-2 py-1 uppercase tracking-wider border border-slate-800">
-                  Asset ID: #{selectedPackage._id}
-                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Use selectedPackage instead of pkg
+                    openEditModal(selectedPackage);
+                  }}
+                  className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 transition-colors cursor-pointer"
+                >
+                  <FaRegEdit size={13} />
+                  Edit Package
+                </button>
               </div>
             )}
           </div>
@@ -609,20 +697,39 @@ const Investment = () => {
                     <div className="grid grid-cols-3 gap-4 border-t border-slate-800 pt-4 text-xs font-semibold">
                       <div>
                         <span className="text-[#9CA3AF] block">
-                          Current Capital Asset Base
-                        </span>
-                        <span className="text-xl font-bold text-[#34D399]">
-                          ₦{selectedPackage.totalAmount?.toLocaleString() || 0}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[#9CA3AF] block">
                           Target Cap Ceiling Bar
                         </span>
                         <span className="text-xl font-bold text-blue-400">
                           ₦{selectedPackage.targetAmount?.toLocaleString() || 0}
                         </span>
                       </div>
+                      
+                      <div>
+                        <span className="text-[#9CA3AF] block">
+                          Current Capital Asset Base
+                        </span>
+                        <span className="text-xl font-bold text-[#34D399]">
+                          ₦
+                          {(
+                            selectedPackage.totalAmount).toLocaleString()}
+                        </span>
+                      </div>
+                      {/* <div>
+                        <span className="text-[#9CA3AF] block">
+                          Current Capital Asset Base
+                        </span>
+                        <span className="text-xl font-bold text-[#34D399]">
+                          ₦
+                          {(
+                            selectedPackage.totalAmount -
+                            selectedPackage.investors.reduce(
+                              (sum, inv) => sum + (inv.profitCollected || 0),
+                              0,
+                            )
+                          ).toLocaleString()}
+                        </span>
+                      </div> */}
+                      
                       <div>
                         <span className="text-[#9CA3AF] block">
                           Stakeholder Headcount
@@ -636,83 +743,100 @@ const Investment = () => {
                 </div>
 
                 {/* Stakeholders Ledger Grid Node Output */}
-                <div className="border border-slate-800 bg-[#1F2937] p-6 space-y-4 rounded-none">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                    Top Pool Stakeholders Roster
-                  </h3>
+                <div className="border border-slate-800 bg-[#1F2937] rounded-none overflow-hidden">
+                  <div className="p-6 border-b border-slate-800">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      Top Pool Stakeholders Roster
+                    </h3>
+                  </div>
+
+                  {/* Table Header */}
+                  <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-[#090A0F]/50 text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF] border-b border-slate-800">
+                    <div
+                      className={
+                        selectedPackage.status !== "completed"
+                          ? "col-span-4"
+                          : "col-span-6"
+                      }
+                    >
+                      User Details
+                    </div>
+                    <div className="col-span-2 text-right">Invested</div>
+                    <div className="col-span-2 text-right">Profit</div>
+                    <div className="col-span-2 text-right">Total</div>
+                    {selectedPackage.status !== "completed" && (
+                      <div className="col-span-2 text-right">Actions</div>
+                    )}
+                  </div>
+
                   {!selectedPackage.investors ||
                   selectedPackage.investors.length === 0 ? (
-                    <p className="text-xs font-medium text-[#9CA3AF] italic py-2">
-                      No individual user ledger entries mapped to this asset
-                      segment yet.
+                    <p className="p-6 text-xs text-[#9CA3AF] italic">
+                      No stakeholders mapped to this pool yet.
                     </p>
                   ) : (
-                    <div className="divide-y divide-slate-800 max-h-96 overflow-y-auto pr-1">
+                    <div className="divide-y divide-slate-800 max-h-96 overflow-y-auto">
                       {selectedPackage.investors.map((inv, idx) => {
-                        const percentageOwned =
-                          selectedPackage.totalAmount > 0
-                            ? (
-                                (inv.amount / selectedPackage.totalAmount) *
-                                100
-                              ).toFixed(1)
-                            : 0;
+                        const profit = inv.profitCollected || 0;
+                        const principal = inv.amount - profit;
 
                         return (
                           <div
                             key={inv._id || idx}
-                            className="flex justify-between items-center text-sm py-3 first:pt-0 last:pb-0 group/row"
+                            className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-[#111827] transition-colors"
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#090A0F] text-[#34D399] font-bold flex items-center justify-center text-lg capitalize shrink-0">
-                                {inv.user?.name ? inv.user.name.charAt(0) : "U"}
+                            {/* Dynamic User Details */}
+                            <div
+                              className={`${selectedPackage.status !== "completed" ? "col-span-4" : "col-span-6"} flex items-center gap-3`}
+                            >
+                              <div className="w-8 h-8 rounded-full bg-[#090A0F] text-[#34D399] font-bold flex items-center justify-center text-sm shrink-0">
+                                {inv.user?.name?.charAt(0) || "U"}
                               </div>
-                              <div>
-                                {/* 👥 Swapped text out to render clean user details instead of raw ID */}
-                                <span className="text-xs font-bold capitalize text-white block truncate max-w-xs">
-                                  {inv.user?.name || "Unknown User"}
-                                </span>
-                                <span className="text-[10px] text-[#9CA3AF] font-medium block">
-                                  {inv.user?.email || "No email available"}
-                                </span>
-                                <span className="text-[10px] text-slate-500 font-medium">
-                                  Pool Equity Share: {percentageOwned}% |
-                                  Linked:{" "}
-                                  {inv.allocatedAt
-                                    ? new Date(
-                                        inv.allocatedAt,
-                                      ).toLocaleDateString()
-                                    : "N/A"}
-                                </span>
+                              <div className="truncate">
+                                <p className="text-xs font-bold text-white truncate">
+                                  {inv.user?.name || "Unknown"}
+                                </p>
+                                <p className="text-[10px] text-[#9CA3AF] truncate">
+                                  {inv.user?.email || "No email"}
+                                </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                              <span className="font-mono font-extrabold text-[#34D399]">
-                                ₦{inv.amount?.toLocaleString()}
-                              </span>
-                              {selectedPackage.status === "completed" ? null : <Popconfirm
-                                title="Remove Investor"
-                                description="Are you sure you want to remove this investor from the pool? Their stake will be deducted from the total capital."
-                                onConfirm={() => removeInvestor(inv.user._id)}
-                                okText="Yes, Remove"
-                                cancelText="Cancel"
-                                placement="left"
-                                okButtonProps={{
-                                  danger: true,
-                                  className:
-                                    "bg-rose-600 hover:bg-rose-500 rounded-none text-xs font-semibold",
-                                }}
-                                cancelButtonProps={{
-                                  className:
-                                    "border-slate-700 text-slate-300 hover:text-white rounded-none text-xs",
-                                }}
-                              >
-                                <IoCloseOutline
-                                  size={20}
-                                  className="cursor-pointer text-[#9CA3AF] hover:text-rose-500 transition-colors"
-                                />
-                              </Popconfirm>}
-                              
+
+                            {/* Financial Columns */}
+                            <div className="col-span-2 text-right text-xs font-mono font-bold text-white">
+                              {/* ₦{principal.toLocaleString()} */}₦
+                              {inv.amount.toLocaleString()}
                             </div>
+                            <div className="col-span-2 text-right text-xs font-mono font-bold text-[#34D399]">
+                              ₦{profit.toLocaleString()}
+                            </div>
+                            <div className="col-span-2 text-right text-xs font-mono font-bold text-blue-400">
+                              ₦{(inv.amount + profit).toLocaleString()}
+                            </div>
+
+                            {/* Actions: Conditionally Rendered */}
+                            {selectedPackage.status !== "completed" && (
+                              <div className="col-span-2 text-right">
+                                <Popconfirm
+                                  title="Remove Investor"
+                                  onConfirm={() =>
+                                    removeInvestor(
+                                      selectedPackage._id,
+                                      inv.user._id,
+                                    )
+                                  }
+                                  okText="Remove"
+                                  okButtonProps={{
+                                    danger: true,
+                                    className: "text-xs",
+                                  }}
+                                >
+                                  <button className="text-[10px] text-rose-500 hover:text-rose-400 font-bold uppercase cursor-pointer">
+                                    Remove
+                                  </button>
+                                </Popconfirm>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -731,16 +855,17 @@ const Investment = () => {
                       Distribute Pool Profit
                     </h3>
                   </div>
+
                   <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                    Trigger equity splits. **55%** will be transferred to
-                    corporate margins, and **45%** will split dynamically across
-                    investors relative to their pool holdings.
+                    Set the profit amount and define the percentage split
+                    between corporate margins and investors.
                   </p>
 
                   <form
                     onSubmit={handleDistributeProfit}
                     className="space-y-4 text-xs"
                   >
+                    {/* Total Profit */}
                     <div className="space-y-1.5">
                       <label className="font-bold text-[#9CA3AF] block">
                         Total Profit Earned (₦)
@@ -756,60 +881,94 @@ const Investment = () => {
                       />
                     </div>
 
+                    {/* Percentage Inputs */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-[#9CA3AF] block">
+                          Company %
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          disabled={selectedPackage.status === "completed"}
+                          value={companyPercent}
+                          onChange={(e) => setCompanyPercent(e.target.value)}
+                          className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6]"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-bold text-[#9CA3AF] block">
+                          Investor %
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          disabled={selectedPackage.status === "completed"}
+                          value={investorPercent}
+                          onChange={(e) => setInvestorPercent(e.target.value)}
+                          className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Live Validation & Calculation */}
                     {parseFloat(inputProfitAmount) > 0 && (
                       <div className="bg-[#090A0F] border border-slate-800 p-3 space-y-2 font-medium text-[11px] text-[#9CA3AF]">
                         <div className="flex justify-between border-b border-slate-800 pb-1.5">
-                          <span>Company Cut (55%):</span>
+                          <span>Company Cut ({companyPercent || 0}%):</span>
                           <strong className="text-white font-mono">
                             ₦
                             {(
-                              parseFloat(inputProfitAmount) * 0.55
+                              parseFloat(inputProfitAmount) *
+                              (parseFloat(companyPercent || 0) / 100)
                             ).toLocaleString()}
                           </strong>
                         </div>
                         <div className="flex justify-between pt-0.5 text-[#34D399]">
-                          <span>Investors Split Pool (45%):</span>
+                          <span>
+                            Investors Split Pool ({investorPercent || 0}%):
+                          </span>
                           <strong className="font-mono">
                             ₦
                             {(
-                              parseFloat(inputProfitAmount) * 0.45
+                              parseFloat(inputProfitAmount) *
+                              (parseFloat(investorPercent || 0) / 100)
                             ).toLocaleString()}
                           </strong>
                         </div>
+
+                        {/* Sum Validator */}
+                        {parseFloat(companyPercent) +
+                          parseFloat(investorPercent) !==
+                          100 && (
+                          <p className="text-rose-500 font-bold pt-1">
+                            Error: Percentages must equal 100% (Current:{" "}
+                            {parseFloat(companyPercent || 0) +
+                              parseFloat(investorPercent || 0)}
+                            %)
+                          </p>
+                        )}
                       </div>
                     )}
+
                     <button
                       type="submit"
                       disabled={
                         selectedPackage.status === "completed" ||
                         distribute ||
-                        selectedPackage.status === "archived"
+                        parseFloat(companyPercent) +
+                          parseFloat(investorPercent) !==
+                          100
                       }
-                      className="w-full py-2.5 bg-[#3B82F6] hover:bg-blue-600 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-sm rounded-none transition-colors mt-2 flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                      className="w-full py-2.5 bg-[#3B82F6] hover:bg-blue-600 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer disabled:cursor-not-allowed"
                     >
-                      {distribute ? (
-                        <>
-                          {/* Optional: Simple inline CSS loading spinner */}
-                          <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-1" />
-                          Processing Splits...
-                        </>
-                      ) : selectedPackage.status === "completed" ||
-                        selectedPackage.status === "archived" ? (
-                        <>
-                          <Percent size={14} />
-                          Yield Lifecycle Concluded
-                        </>
-                      ) : (
-                        <>
-                          <Percent size={14} />
-                          Execute Distribution Breakdown
-                        </>
-                      )}
+                      {distribute
+                        ? "Processing..."
+                        : "Execute Distribution Breakdown"}
                     </button>
                   </form>
                 </div>
 
-                {/* PANEL: Allocation Engine Node Form */}
                 {/* PANEL: Allocation Engine Node Form */}
                 <div className="border border-slate-800 bg-[#1F2937] p-5 space-y-4 rounded-none">
                   <div className="flex items-center gap-2 text-white">
@@ -887,7 +1046,7 @@ const Investment = () => {
                       type="submit"
                       disabled={
                         selectedPackage.status === "completed" ||
-                        selectedPackage.status === "archived" 
+                        selectedPackage.status === "archived"
                       }
                       className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer"
                     >
@@ -903,11 +1062,13 @@ const Investment = () => {
         </motion.div>
       )}
 
-      {/* CREATE PACKAGE MODAL OVERLAY */}
+      {/* CREATE/EDIT PACKAGE MODAL OVERLAY */}
       {isCreateOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            onClick={() => !loading && setIsCreateOpen(false)}
+            onClick={() =>
+              !loading && (setIsCreateOpen(false), setIsEditMode(false))
+            }
             className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-xs"
           />
 
@@ -915,10 +1076,12 @@ const Investment = () => {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2 text-white">
                 <FolderPlus size={18} className="text-[#34D399]" />
-                <h3 className="font-bold text-base">New Investment Tier</h3>
+                <h3 className="font-bold text-base">
+                  {isEditMode ? "Edit Investment Tier" : "New Investment Tier"}
+                </h3>
               </div>
               <button
-                onClick={() => !loading && setIsCreateOpen(false)}
+                onClick={() => (setIsCreateOpen(false), setIsEditMode(false))}
                 disabled={loading}
                 className="text-[#9CA3AF] hover:text-white font-bold text-sm disabled:opacity-30 cursor-pointer"
               >
@@ -926,10 +1089,8 @@ const Investment = () => {
               </button>
             </div>
 
-            <form
-              onSubmit={handleCreateInvestment}
-              className="space-y-4 text-xs"
-            >
+            <form onSubmit={handleSaveInvestment} className="space-y-4 text-xs">
+              {/* Title Input */}
               <div className="space-y-1.5">
                 <label className="font-bold text-[#9CA3AF] block">
                   Investment Package Name
@@ -945,6 +1106,7 @@ const Investment = () => {
                 />
               </div>
 
+              {/* Target Amount Input */}
               <div className="space-y-1.5">
                 <label className="font-bold text-[#9CA3AF] block">
                   Target Capital Size Ceiling (₦)
@@ -960,6 +1122,8 @@ const Investment = () => {
                 />
               </div>
 
+              {/* Image Upload (Only show for new creation or optional update) */}
+
               <div className="space-y-1.5">
                 <label className="font-bold text-[#9CA3AF] block">
                   Package Banner Image
@@ -967,24 +1131,22 @@ const Investment = () => {
                 <Upload.Dragger
                   {...antdUploadProps}
                   disabled={loading}
-                  className="bg-[#090A0F] border border-dashed border-slate-800 rounded-none p-4 text-center cursor-pointer block hover:border-[#34D399] transition-all disabled:opacity-40"
+                  className="bg-[#090A0F] border border-dashed border-slate-800 p-4 text-center cursor-pointer block hover:border-[#34D399]"
                 >
                   {previewImageUrl ? (
-                    <div className="h-24 w-full overflow-hidden relative">
-                      <img
-                        src={previewImageUrl}
-                        alt="Upload preview"
-                        className="w-full h-full object-cover rounded-none"
-                      />
-                    </div>
+                    <img
+                      src={previewImageUrl}
+                      alt="preview"
+                      className="h-24 w-full object-cover"
+                    />
                   ) : (
-                    <div className="space-y-1 py-2 flex flex-col items-center">
+                    <div className="py-2 flex flex-col items-center">
                       <UploadCloud
                         size={24}
                         className="text-[#9CA3AF] mx-auto"
                       />
-                      <p className="text-[11px] font-medium text-[#9CA3AF]">
-                        Click or drag image file here to import banner
+                      <p className="text-[11px] text-[#9CA3AF]">
+                        Click or drag to import banner
                       </p>
                     </div>
                   )}
@@ -994,9 +1156,13 @@ const Investment = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer"
               >
-                {loading ? "Deploying Assets..." : "Deploy Package"}
+                {loading
+                  ? "Processing..."
+                  : isEditMode
+                    ? "Save Changes"
+                    : "Deploy Package"}
               </button>
             </form>
           </div>

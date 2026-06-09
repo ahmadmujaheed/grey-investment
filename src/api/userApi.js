@@ -3,6 +3,7 @@ import apiClient from "./apiClient";
 // 👥 1. Fetch All Registered Platform Users with Aggregated Metrics
 export const fetchAllUsers = async () => {
   const response = await apiClient.get("/users");
+  console.log(response)
   return response.data;
 };
 
