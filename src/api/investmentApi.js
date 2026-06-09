@@ -1,9 +1,10 @@
 import apiClient from "./apiClient";
 
-// 1. Fetch All Active/Running Investment Packages
-export const fetchAllInvestments = async () => {
-  const response = await apiClient.get("/investments");
-  return response.data;
+// 1. Fetch All Active/Running Investment Packages (Paginated)
+export const fetchAllInvestments = async (page = 1, limit = 10) => {
+  const response = await apiClient.get(`/investments?page=${page}&limit=${limit}`);
+  return response.data; 
+  // Returns: { data: [...], currentPage, totalPages }
 };
 
 // 2. Create a New Investment Package
@@ -28,16 +29,15 @@ export const distributeInvestmentProfits = async (investmentId, totalProfitAmoun
   return response.data;
 };
 
-// 5. ARCHIVE Investment Package (Replaces Purge/Delete)
+// 5. ARCHIVE Investment Package
 export const archiveInvestmentPackage = async (investmentId) => {
-  // Uses PATCH to update status to 'archived'
   const response = await apiClient.patch(`/investments/${investmentId}/archive`);
   return response.data;
 };
 
-// 6. FETCH Archived Investment Packages
-export const fetchArchivedInvestments = async () => {
-  const response = await apiClient.get("/investments/archived");
+// 6. FETCH Archived Investment Packages (Paginated)
+export const fetchArchivedInvestments = async (page = 1, limit = 10) => {
+  const response = await apiClient.get(`/investments/archived?page=${page}&limit=${limit}`);
   return response.data;
 };
 
@@ -47,8 +47,15 @@ export const restoreInvestmentPackage = async (investmentId) => {
   return response.data;
 };
 
-// 👥 8. Fetch All Registered Platform Users
-export const fetchAllUsers = async () => {
-  const response = await apiClient.get("/users");
+// 8. Fetch All Registered Platform Users (Paginated & Excludes Admin)
+// Ensure your backend controller filters out the admin role as discussed
+export const fetchAllUsers = async (page = 1, limit = 10) => {
+  const response = await apiClient.get(`/users?page=${page}&limit=${limit}`);
+  return response.data;
+};
+
+// 9. Remove User from Investment Pool
+export const removeUserFromPool = async (investmentId, userId) => {
+  const response = await apiClient.delete(`/investments/${investmentId}/evict-investor/${userId}`);
   return response.data;
 };
