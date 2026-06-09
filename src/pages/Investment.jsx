@@ -13,6 +13,7 @@ import {
 import { motion } from "motion/react";
 import { Upload, message, Popconfirm, Skeleton, Select } from "antd";
 import { HiOutlineArchiveBoxArrowDown } from "react-icons/hi2";
+import { IoCloseOutline } from "react-icons/io5";
 
 // 🔌 Import your live central API layer operations
 import {
@@ -24,6 +25,7 @@ import {
   fetchAllUsers,
   fetchArchivedInvestments,
   restoreInvestmentPackage,
+  removeUserFromPool,
 } from "../api/investmentApi";
 
 const fadeInUp = {
@@ -65,21 +67,17 @@ const Investment = () => {
     totalPages: 1,
   });
 
+  const [isRemoving, setIsRemoving] = useState(false);
+
   // 1. Fetch main pool listings from the server instances on component mount
   const loadPlatformAssets = async (showSkeleton = false) => {
     try {
       if (showSkeleton) setLoading(true);
-      const data = await fetchAllInvestments();
-      setPackages(data);
+      const response = await fetchAllInvestments();
 
-      if (selectedPackage) {
-        const structuralMatch = data.find(
-          (pkg) => pkg._id === selectedPackage._id,
-        );
-        if (structuralMatch) {
-          setSelectedPackage(structuralMatch);
-        }
-      }
+      // FIX: If your API returns { data: [...] }, use response.data
+      // If it returns the array directly, keep as is.
+      setPackages(Array.isArray(response) ? response : response.data);
     } catch (error) {
       message.error("Failed to load investment package configurations.");
     } finally {
@@ -221,14 +219,29 @@ const Investment = () => {
     }
   };
 
+  // const getArchivedInvestments = async () => {
+  //   try {
+  //     setGettingArchived(true);
+  //     const data = await fetchArchivedInvestments();
+  //     // console.log("Archived Investments:", data);
+  //     setPackages(data);
+  //     // setSelectedPackage(data); // Clear any selected package to avoid mismatch with active list
+  //     // We set a state to track that we are viewing archived items
+  //     setInvestmentStatus("archived");
+  //   } catch (error) {
+  //     message.error("Failed to load archived investment packages.");
+  //   } finally {
+  //     setGettingArchived(false);
+  //   }
+  // };
+
   const getArchivedInvestments = async () => {
     try {
       setGettingArchived(true);
-      const data = await fetchArchivedInvestments();
-      // console.log("Archived Investments:", data);
-      setPackages(data);
-      // setSelectedPackage(data); // Clear any selected package to avoid mismatch with active list
-      // We set a state to track that we are viewing archived items
+      const response = await fetchArchivedInvestments();
+
+      // FIX: Ensure you are setting an array
+      setPackages(Array.isArray(response) ? response : response.data);
       setInvestmentStatus("archived");
     } catch (error) {
       message.error("Failed to load archived investment packages.");
@@ -287,6 +300,45 @@ const Investment = () => {
       setDistribute(false);
     }
   };
+
+  const removeInvestor = async (userId) => {
+    try {
+      setIsRemoving(true);
+      await removeUserFromPool(selectedPackage._id, userId);
+      message.success("Investor removed from pool roster successfully!");
+
+      // 1. Calculate the new totalAmount by summing the remaining investors
+      const updatedInvestors = selectedPackage.investors.filter(
+        (inv) => inv.user._id !== userId,
+      );
+
+      const newTotalAmount = updatedInvestors.reduce(
+        (sum, inv) => sum + (Number(inv.amount) || 0),
+        0,
+      );
+
+      // 2. Update the local state with the filtered array AND the new total
+      setSelectedPackage((prev) => ({
+        ...prev,
+        investors: updatedInvestors,
+        totalAmount: newTotalAmount, // This forces the UI to re-render with the new base
+      }));
+
+      // 3. Update the global packages list as well
+      setPackages((prev) =>
+        prev.map((p) =>
+          p._id === selectedPackage._id
+            ? { ...p, investors: updatedInvestors, totalAmount: newTotalAmount }
+            : p,
+        ),
+      );
+    } catch (error) {
+      message.error("Failed to remove investor from pool roster.");
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
 
   return (
     <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF] p-4">
@@ -637,6 +689,29 @@ const Investment = () => {
                               <span className="font-mono font-extrabold text-[#34D399]">
                                 ₦{inv.amount?.toLocaleString()}
                               </span>
+                              {selectedPackage.status === "completed" ? null : <Popconfirm
+                                title="Remove Investor"
+                                description="Are you sure you want to remove this investor from the pool? Their stake will be deducted from the total capital."
+                                onConfirm={() => removeInvestor(inv.user._id)}
+                                okText="Yes, Remove"
+                                cancelText="Cancel"
+                                placement="left"
+                                okButtonProps={{
+                                  danger: true,
+                                  className:
+                                    "bg-rose-600 hover:bg-rose-500 rounded-none text-xs font-semibold",
+                                }}
+                                cancelButtonProps={{
+                                  className:
+                                    "border-slate-700 text-slate-300 hover:text-white rounded-none text-xs",
+                                }}
+                              >
+                                <IoCloseOutline
+                                  size={20}
+                                  className="cursor-pointer text-[#9CA3AF] hover:text-rose-500 transition-colors"
+                                />
+                              </Popconfirm>}
+                              
                             </div>
                           </div>
                         );
@@ -812,7 +887,7 @@ const Investment = () => {
                       type="submit"
                       disabled={
                         selectedPackage.status === "completed" ||
-                        selectedPackage.status === "archived"
+                        selectedPackage.status === "archived" 
                       }
                       className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer"
                     >
