@@ -87,17 +87,28 @@ const Users = () => {
   const [newUserPhone, setNewUserPhone] = useState("");
 
   // Load platform users catalog from remote API core mapping engine
-  const loadUsersData = async () => {
-    try {
-      setLoading(true);
-      const data = await fetchAllUsers();
-      setUsers(data);
-    } catch (error) {
-      message.error(error.response?.data?.message || "Critical failure parsing updated data from server node.");
-    } finally {
-      setLoading(false);
-    }
-  };
+const loadUsersData = async () => {
+  try {
+    setLoading(true);
+    const data = await fetchAllUsers();
+    
+    // Map the incoming data to ensure all fields exist
+    const processedUsers = data.map(user => ({
+      ...user,
+      totalInvested: user.totalInvested || 0,
+      totalProfit: user.totalProfit || 0,
+      totalInbound: user.totalInbound || 0,
+      investmentsList: user.investmentsList || [],
+      inboundHistory: user.inboundHistory || []
+    }));
+    
+    setUsers(processedUsers);
+  } catch (error) {
+    message.error("Failed to load user data.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     loadUsersData();
@@ -426,7 +437,8 @@ const Users = () => {
                         <tr className="bg-[#1F2937] border-b border-slate-800 font-bold text-[#9CA3AF]">
                           <th className="p-2">Asset Pool Class</th>
                           <th className="p-2 text-right">Committed</th>
-                          <th className="p-2 text-right">Yield Yielded</th>
+                          <th className="p-2 text-right">Profit</th>
+                          <th className="p-2 text-right">Total</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
@@ -435,6 +447,9 @@ const Users = () => {
                             <td className="p-2 font-bold capitalize text-white">{inv.poolName}</td>
                             <td className="p-2 text-right font-mono text-white">₦{inv.amount.toLocaleString()}</td>
                             <td className="p-2 text-right font-mono text-[#34D399] font-bold">₦{inv.yieldEarned.toLocaleString()}</td>
+                            <td className="p-2 text-right font-mono text-[#34D399] font-bold">
+  ₦{(inv.amount + inv.yieldEarned).toLocaleString()}
+</td>
                           </tr>
                         ))}
                       </tbody>
@@ -478,7 +493,7 @@ const Users = () => {
             </div>
 
             {/* Quick Micro Action Controllers */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-800 text-[11px]">
+            {/* <div className="flex items-center gap-2 pt-2 border-t border-slate-800 text-[11px]">
               <span className="font-bold text-[#9CA3AF] uppercase tracking-wider text-[10px]">Admin Quick Tasks:</span>
               <button 
                 onClick={() => message.info("Task action: Record Inbound Cash Deposit")}
@@ -492,7 +507,7 @@ const Users = () => {
               >
                 → Allocate Investment
               </button>
-            </div>
+            </div> */}
 
           </motion.div>
         )}

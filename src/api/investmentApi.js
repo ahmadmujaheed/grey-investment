@@ -3,6 +3,7 @@ import apiClient from "./apiClient";
 // 1. Fetch All Active/Running Investment Packages (Paginated)
 export const fetchAllInvestments = async (page = 1, limit = 10) => {
   const response = await apiClient.get(`/investments?page=${page}&limit=${limit}`);
+  console.log(response)
   return response.data; 
   // Returns: { data: [...], currentPage, totalPages }
 };
@@ -22,10 +23,21 @@ export const allocateInvestorToPool = async (investmentId, payload) => {
 };
 
 // 4. End Investment & Share Profits
-export const distributeInvestmentProfits = async (investmentId, totalProfitAmount) => {
-  const response = await apiClient.post(`/investments/${investmentId}/distribute-yield`, {
-    totalProfit: totalProfitAmount,
-  });
+// export const distributeInvestmentProfits = async (investmentId, totalProfitAmount) => {
+//   const response = await apiClient.post(`/investments/${investmentId}/distribute-yield`, {
+//     totalProfit: totalProfitAmount,
+//   });
+//   return response.data;
+// };
+
+export const distributeInvestmentProfits = async (investmentId, distributionData) => {
+  // distributionData expected structure: 
+  // { totalProfit: number, companyShare: number, investorShare: number }
+  const response = await apiClient.post(
+    `/investments/${investmentId}/distribute-yield`, 
+    distributionData
+  );
+  console.log(response)
   return response.data;
 };
 
@@ -56,6 +68,14 @@ export const fetchAllUsers = async (page = 1, limit = 10) => {
 
 // 9. Remove User from Investment Pool
 export const removeUserFromPool = async (investmentId, userId) => {
-  const response = await apiClient.delete(`/investments/${investmentId}/evict-investor/${userId}`);
+  console.log(investmentId, userId);
+    const response = await apiClient.delete(`/investments/${investmentId}/evict-investor/${userId}`);
+//   console.log(response)
+  return response.data;
+};
+
+// 10. Edit Investment Package Details (Admin Only)
+export const editInvestment = async (investmentId, data) => {
+  const response = await apiClient.patch(`/investments/${investmentId}`, data);
   return response.data;
 };
