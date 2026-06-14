@@ -68,7 +68,6 @@ export const fetchAllUsers = async (page = 1, limit = 10) => {
 
 // 9. Remove User from Investment Pool
 export const removeUserFromPool = async (investmentId, userId) => {
-  console.log(investmentId, userId);
     const response = await apiClient.delete(`/investments/${investmentId}/evict-investor/${userId}`);
 //   console.log(response)
   return response.data;

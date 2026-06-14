@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { 
-  UserPlus, 
-  Users as UsersIcon, 
-  TrendingUp, 
-  ShieldCheck, 
-  Mail, 
+import {
+  UserPlus,
+  Users as UsersIcon,
+  TrendingUp,
+  ShieldCheck,
+  Mail,
   Calendar,
   Phone,
   Search,
@@ -16,26 +16,30 @@ import {
   Download,
   ArrowDownLeft,
   Wallet,
-  Coins
+  Coins,
 } from "lucide-react";
+import { Popconfirm } from "antd"
 import { motion, AnimatePresence } from "motion/react";
 import { message } from "antd";
-import { fetchAllUsers, provisionNewUser } from "../api/userApi";
+import { fetchAllUsers, provisionNewUser, resetUserPassword } from "../api/userApi";
 
 const fadeInUpRow = {
   hidden: { opacity: 0, y: 8 },
   visible: (i) => ({
-    opacity: 1, 
-    y: 0, 
-    transition: { delay: i * 0.03, duration: 0.22, ease: "easeOut" }
-  })
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.03, duration: 0.22, ease: "easeOut" },
+  }),
 };
 
 // --- SKELETON LOADERS FOR DASHBOARD SECTIONS ---
 const StatisticsSkeleton = () => (
   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-pulse">
     {[1, 2, 3].map((n) => (
-      <div key={n} className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4 rounded-none">
+      <div
+        key={n}
+        className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4 rounded-none"
+      >
         <div className="w-10 h-10 bg-[#090A0F] rounded-none shrink-0" />
         <div className="space-y-2 flex-1">
           <div className="h-3 bg-slate-800 w-1/3 rounded-none" />
@@ -51,7 +55,10 @@ const RosterTableSkeleton = () => (
     <div className="h-10 bg-[#090A0F] w-full" />
     <div className="p-4 space-y-4">
       {[1, 2, 3, 4, 5].map((n) => (
-        <div key={n} className="flex justify-between items-center py-2 border-b border-slate-800/50">
+        <div
+          key={n}
+          className="flex justify-between items-center py-2 border-b border-slate-800/50"
+        >
           <div className="flex items-center gap-3 w-1/4">
             <div className="w-8 h-8 bg-slate-800 rounded-none shrink-0" />
             <div className="space-y-1.5 flex-1">
@@ -75,10 +82,10 @@ const Users = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   const [searchParams, setSearchParams] = useSearchParams();
   const userIdFromUrl = searchParams.get("id");
-  
+
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Create User Form States
@@ -87,37 +94,41 @@ const Users = () => {
   const [newUserPhone, setNewUserPhone] = useState("");
 
   // Load platform users catalog from remote API core mapping engine
-const loadUsersData = async () => {
-  try {
-    setLoading(true);
-    const data = await fetchAllUsers();
-    
-    // Map the incoming data to ensure all fields exist
-    const processedUsers = data.map(user => ({
-      ...user,
-      totalInvested: user.totalInvested || 0,
-      totalProfit: user.totalProfit || 0,
-      totalInbound: user.totalInbound || 0,
-      investmentsList: user.investmentsList || [],
-      inboundHistory: user.inboundHistory || []
-    }));
-    
-    setUsers(processedUsers);
-  } catch (error) {
-    message.error("Failed to load user data.");
-  } finally {
-    setLoading(false);
-  }
-};
+  const loadUsersData = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchAllUsers();
+
+      // Map the incoming data to ensure all fields exist
+      const processedUsers = data.map((user) => ({
+        ...user,
+        totalInvested: user.totalInvested || 0,
+        totalProfit: user.totalProfit || 0,
+        totalInbound: user.totalInbound || 0,
+        investmentsList: user.investmentsList || [],
+        inboundHistory: user.inboundHistory || [],
+      }));
+
+      setUsers(processedUsers);
+    } catch (error) {
+      message.error("Failed to load user data.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadUsersData();
   }, []);
 
+  console.log(selectedUser, "this is the user")
+
   // Sync state view node with browser routing deep-link indicators
   useEffect(() => {
     if (userIdFromUrl && users.length > 0) {
-      const user = users.find(u => (u.id === userIdFromUrl || u._id === userIdFromUrl));
+      const user = users.find(
+        (u) => u.id === userIdFromUrl || u._id === userIdFromUrl,
+      );
       if (user) setSelectedUser(user);
     } else {
       setSelectedUser(null);
@@ -141,28 +152,31 @@ const loadUsersData = async () => {
       const payload = {
         name: newUserName,
         email: newUserEmail,
-        phone: newUserPhone
+        phone: newUserPhone,
       };
 
       const responseData = await provisionNewUser(payload);
-      
+
       // Structure response record properties to gracefully populate immediate React UI states
       const structuredUser = {
-        id: responseData.user._id, 
+        id: responseData.user._id,
         name: responseData.user.name,
         email: responseData.user.email,
         phone: responseData.user.phone,
-        joinedDate: new Date(responseData.user.createdAt).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric"
-        }),
+        joinedDate: new Date(responseData.user.createdAt).toLocaleDateString(
+          "en-GB",
+          {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          },
+        ),
         totalInvested: 0,
         totalInbound: 0,
         totalProfit: 0,
         activeTiers: 0,
         investmentsList: [],
-        inboundHistory: []
+        inboundHistory: [],
       };
 
       setUsers([structuredUser, ...users]);
@@ -170,30 +184,49 @@ const loadUsersData = async () => {
       setNewUserEmail("");
       setNewUserPhone("");
       setIsModalOpen(false);
-      message.success(responseData.message || "New investor profile registered successfully!");
+      message.success(
+        responseData.message || "New investor profile registered successfully!",
+      );
     } catch (error) {
-      message.error(error.response?.data?.message || "Failed to provision workspace profile parameters.");
+      message.error(
+        error.response?.data?.message ||
+          "Failed to provision workspace profile parameters.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+ const handleResetPassword = async (userId) => {
+  try {
+    // Ensure this name matches the import above
+    await resetUserPassword(userId); 
+    message.success("Password successfully reset to default.");
+  } catch (error) {
+    // Provide better error feedback
+    message.error(error.response?.data?.message || "Failed to reset password.");
+  }
+};
+
+  const filteredUsers = users.filter(
+    (user) =>
+      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const totalUsersCount = users.length;
-  const activeInvestorsCount = users.filter(u => u.totalInvested > 0).length;
-  const totalPlatformCapital = users.reduce((sum, u) => sum + (u.totalInvested || 0), 0);
+  const activeInvestorsCount = users.filter((u) => u.totalInvested > 0).length;
+  const totalPlatformCapital = users.reduce(
+    (sum, u) => sum + (u.totalInvested || 0),
+    0,
+  );
 
   return (
     <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF] p-6">
-      
       <AnimatePresence mode="wait">
         {!selectedUser ? (
           /* VIEW 1: MASTER LIST ROSTER DIRECTORY */
-          <motion.div 
+          <motion.div
             key="list-panel"
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
@@ -202,10 +235,15 @@ const loadUsersData = async () => {
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-white">Investor Accounts</h1>
-                <p className="text-sm text-[#9CA3AF] mt-0.5">Review registered client balances and provision credential records.</p>
+                <h1 className="text-2xl font-bold tracking-tight text-white">
+                  Investor Accounts
+                </h1>
+                <p className="text-sm text-[#9CA3AF] mt-0.5">
+                  Review registered client balances and provision credential
+                  records.
+                </p>
               </div>
-              
+
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 rounded-none transition-colors shrink-0 cursor-pointer"
@@ -216,15 +254,21 @@ const loadUsersData = async () => {
             </div>
 
             {/* Platform Metrics Section Wrapper */}
-            {loading ? <StatisticsSkeleton /> : (
+            {loading ? (
+              <StatisticsSkeleton />
+            ) : (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4 rounded-none">
                   <div className="p-2.5 bg-[#090A0F] text-[#34D399]">
                     <UsersIcon size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-[#9CA3AF] block">Total Profiles</span>
-                    <span className="text-lg font-semibold text-white">{totalUsersCount} Users</span>
+                    <span className="text-xs font-semibold text-[#9CA3AF] block">
+                      Total Profiles
+                    </span>
+                    <span className="text-lg font-semibold text-white">
+                      {totalUsersCount} Users
+                    </span>
                   </div>
                 </div>
 
@@ -233,8 +277,12 @@ const loadUsersData = async () => {
                     <ShieldCheck size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-[#9CA3AF] block">Funded Stakeholders</span>
-                    <span className="text-lg font-semibold text-white">{activeInvestorsCount} Active</span>
+                    <span className="text-xs font-semibold text-[#9CA3AF] block">
+                      Funded Stakeholders
+                    </span>
+                    <span className="text-lg font-semibold text-white">
+                      {activeInvestorsCount} Active
+                    </span>
                   </div>
                 </div>
 
@@ -243,8 +291,12 @@ const loadUsersData = async () => {
                     <TrendingUp size={20} />
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-[#9CA3AF] block">Total Asset Volume</span>
-                    <span className="text-lg font-semibold text-white">₦{totalPlatformCapital.toLocaleString()}</span>
+                    <span className="text-xs font-semibold text-[#9CA3AF] block">
+                      Total Asset Volume
+                    </span>
+                    <span className="text-lg font-semibold text-white">
+                      ₦{totalPlatformCapital.toLocaleString()}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -253,7 +305,7 @@ const loadUsersData = async () => {
             {/* Filter Input Control */}
             <div className="flex items-center max-w-xs border border-slate-800 bg-[#1F2937] px-3 py-1.5 focus-within:border-[#34D399] transition-colors">
               <Search size={16} className="text-[#9CA3AF] mr-2 shrink-0" />
-              <input 
+              <input
                 type="text"
                 placeholder="Filter by name or email..."
                 value={searchTerm}
@@ -263,7 +315,9 @@ const loadUsersData = async () => {
             </div>
 
             {/* Main Roster Dynamic Table Segment */}
-            {loading ? <RosterTableSkeleton /> : (
+            {loading ? (
+              <RosterTableSkeleton />
+            ) : (
               <div className="border border-slate-800 bg-[#1F2937] rounded-none overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
@@ -271,21 +325,28 @@ const loadUsersData = async () => {
                       <th className="p-4 font-bold">Investor Identity</th>
                       <th className="p-4 font-bold">Contact Channels</th>
                       <th className="p-4 font-bold">Join Date</th>
-                      <th className="p-4 font-bold text-right">Principal Invested</th>
-                      <th className="p-4 font-bold text-right">Net Profit Yield</th>
+                      <th className="p-4 font-bold text-right">
+                        Principal Invested
+                      </th>
+                      <th className="p-4 font-bold text-right">
+                        Net Profit Yield
+                      </th>
                       <th className="p-4 font-bold text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-8 text-center text-[#9CA3AF] font-medium italic">
+                        <td
+                          colSpan={6}
+                          className="p-8 text-center text-[#9CA3AF] font-medium italic"
+                        >
                           No matching registered database records found.
                         </td>
                       </tr>
                     ) : (
                       filteredUsers.map((user, idx) => (
-                        <motion.tr 
+                        <motion.tr
                           key={user.id || user._id}
                           custom={idx}
                           variants={fadeInUpRow}
@@ -299,30 +360,40 @@ const loadUsersData = async () => {
                                 {user.name ? user.name.charAt(0) : "?"}
                               </div>
                               <div>
-                                <div className="font-semibold capitalize text-white text-sm">{user.name}</div>
+                                <div className="font-semibold capitalize text-white text-sm">
+                                  {user.name}
+                                </div>
                                 {/* <div className="text-[10px] text-[#9CA3AF] font-mono tracking-wide">ID: #{user.id || user._id}</div> */}
                               </div>
                             </div>
                           </td>
-                          
+
                           <td className="p-4 space-y-0.5">
                             <div className="flex items-center gap-1.5 text-[#9CA3AF]">
-                              <Mail size={12} className="text-[#9CA3AF] shrink-0" />
-                              <span className="truncate max-w-40">{user.email}</span>
+                              <Mail
+                                size={12}
+                                className="text-[#9CA3AF] shrink-0"
+                              />
+                              <span className="truncate max-w-40">
+                                {user.email}
+                              </span>
                             </div>
                             <div className="flex items-center gap-1.5 text-[#9CA3AF]">
-                              <Phone size={12} className="text-[#9CA3AF] shrink-0" />
+                              <Phone
+                                size={12}
+                                className="text-[#9CA3AF] shrink-0"
+                              />
                               <span>{user.phone}</span>
                             </div>
                           </td>
-                          
+
                           <td className="p-4 text-[#9CA3AF]">
                             <div className="flex items-center gap-1.5">
                               <Calendar size={12} className="text-[#9CA3AF]" />
                               <span>{user.joinedDate}</span>
                             </div>
                           </td>
-                          
+
                           <td className="p-4 text-right font-mono font-extrabold text-white text-sm">
                             ₦{(user.totalInvested || 0).toLocaleString()}
                           </td>
@@ -349,7 +420,7 @@ const loadUsersData = async () => {
           </motion.div>
         ) : (
           /* VIEW 2: COMPACT, UNIFIED SIMPLIFIED DETAILS VIEW */
-          <motion.div 
+          <motion.div
             key="profile-panel"
             initial={{ opacity: 0, x: 8 }}
             animate={{ opacity: 1, x: 0 }}
@@ -358,19 +429,31 @@ const loadUsersData = async () => {
           >
             {/* Minimal Header Navigation */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <button 
+              <button
                 onClick={() => handleSelectUser(null)}
                 className="inline-flex items-center gap-1.5 text-[#9CA3AF] hover:text-white text-xs font-bold transition-colors group cursor-pointer"
               >
-                <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+                <ArrowLeft
+                  size={14}
+                  className="group-hover:-translate-x-0.5 transition-transform"
+                />
                 <span>Back to Roster</span>
               </button>
-              
+
               <div className="flex items-center gap-2">
                 <button className="flex items-center gap-1 px-2.5 py-1 border border-slate-800 text-[11px] font-bold hover:bg-[#1F2937] transition-colors text-[#9CA3AF] cursor-pointer">
                   <Download size={12} /> Audit Trail
                 </button>
-                <span className="text-[10px] font-mono bg-[#1F2937] text-[#9CA3AF] px-2 py-1 border border-slate-800">ID: #{selectedUser.id || selectedUser._id}</span>
+                <Popconfirm
+  title="Reset this user's password to 'investment'?"
+  onConfirm={() => handleResetPassword(selectedUser?.id)}
+  okText="Reset"
+  cancelText="Cancel"
+>
+  <button className="flex items-center gap-1 px-2.5 py-1 border border-slate-800 text-[11px] font-bold hover:bg-[#1F2937] transition-colors text-white cursor-pointer">
+    Reset User Password
+  </button>
+</Popconfirm>
               </div>
             </div>
 
@@ -381,10 +464,18 @@ const loadUsersData = async () => {
                   {selectedUser.name ? selectedUser.name.charAt(0) : "?"}
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold capitalize text-white tracking-tight">{selectedUser.name}</h2>
+                  <h2 className="text-lg font-semibold capitalize text-white tracking-tight">
+                    {selectedUser.name}
+                  </h2>
                   <div className="flex items-center gap-x-3 text-[11px] text-[#9CA3AF] font-medium">
-                    <span className="flex items-center gap-1"><Mail size={11} className="text-[#9CA3AF]" /> {selectedUser.email}</span>
-                    <span className="flex items-center gap-1"><Phone size={11} className="text-[#9CA3AF]" /> {selectedUser.phone}</span>
+                    <span className="flex items-center gap-1">
+                      <Mail size={11} className="text-[#9CA3AF]" />{" "}
+                      {selectedUser.email}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Phone size={11} className="text-[#9CA3AF]" />{" "}
+                      {selectedUser.phone}
+                    </span>
                     <span className="text-slate-700">|</span>
                     <span>Enrolled: {selectedUser.joinedDate}</span>
                   </div>
@@ -399,37 +490,52 @@ const loadUsersData = async () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
                 <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <ArrowDownLeft size={12} className="text-[#3B82F6]" /> Inbound Capital (Sent In)
+                  <ArrowDownLeft size={12} className="text-[#3B82F6]" /> Inbound
+                  Capital (Sent In)
                 </span>
-                <div className="text-xl font-extrabold text-white font-mono">₦{(selectedUser.totalInbound || 0).toLocaleString()}</div>
+                <div className="text-xl font-extrabold text-white font-mono">
+                  ₦{(selectedUser.totalInbound || 0).toLocaleString()}
+                </div>
               </div>
 
               <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
                 <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <Briefcase size={12} className="text-amber-500" /> Placed Principal (Invested)
+                  <Briefcase size={12} className="text-amber-500" /> Placed
+                  Principal (Invested)
                 </span>
-                <div className="text-xl font-extrabold text-amber-500 font-mono">₦{(selectedUser.totalInvested || 0).toLocaleString()}</div>
+                <div className="text-xl font-extrabold text-amber-500 font-mono">
+                  ₦{(selectedUser.totalInvested || 0).toLocaleString()}
+                </div>
               </div>
 
               <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
                 <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <Coins size={12} className="text-[#34D399]" /> Accumulated Yield (Profit)
+                  <Coins size={12} className="text-[#34D399]" /> Accumulated
+                  Yield (Profit)
                 </span>
-                <div className="text-xl font-extrabold text-[#34D399] font-mono">₦{(selectedUser.totalProfit || 0).toLocaleString()}</div>
+                <div className="text-xl font-extrabold text-[#34D399] font-mono">
+                  ₦{(selectedUser.totalProfit || 0).toLocaleString()}
+                </div>
               </div>
             </div>
 
             {/* UNIFIED ADMINISTRATIVE DATA GRID */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
               {/* Box 1: Placed Investment Allocations */}
               <div className="border border-slate-800 bg-[#1F2937] p-4 space-y-3">
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">Active Investment Placements</h4>
-                  <p className="text-[11px] text-[#9CA3AF]">Capital actively assigned to operational pool positions.</p>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                    Active Investment Placements
+                  </h4>
+                  <p className="text-[11px] text-[#9CA3AF]">
+                    Capital actively assigned to operational pool positions.
+                  </p>
                 </div>
-                {!selectedUser.investmentsList || selectedUser.investmentsList.length === 0 ? (
-                  <p className="text-xs text-[#9CA3AF] italic bg-[#090A0F] p-3 text-center border border-slate-800">No current asset placements found.</p>
+                {!selectedUser.investmentsList ||
+                selectedUser.investmentsList.length === 0 ? (
+                  <p className="text-xs text-[#9CA3AF] italic bg-[#090A0F] p-3 text-center border border-slate-800">
+                    No current asset placements found.
+                  </p>
                 ) : (
                   <div className="border border-slate-800 overflow-hidden bg-[#090A0F]">
                     <table className="w-full text-left border-collapse text-[11px]">
@@ -443,13 +549,22 @@ const loadUsersData = async () => {
                       </thead>
                       <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
                         {selectedUser.investmentsList.map((inv, idx) => (
-                          <tr key={inv.reference || idx} className="hover:bg-[#1F2937]/40">
-                            <td className="p-2 font-bold capitalize text-white">{inv.poolName}</td>
-                            <td className="p-2 text-right font-mono text-white">₦{inv.amount.toLocaleString()}</td>
-                            <td className="p-2 text-right font-mono text-[#34D399] font-bold">₦{inv.yieldEarned.toLocaleString()}</td>
+                          <tr
+                            key={inv.reference || idx}
+                            className="hover:bg-[#1F2937]/40"
+                          >
+                            <td className="p-2 font-bold capitalize text-white">
+                              {inv.poolName}
+                            </td>
+                            <td className="p-2 text-right font-mono text-white">
+                              ₦{inv.amount.toLocaleString()}
+                            </td>
                             <td className="p-2 text-right font-mono text-[#34D399] font-bold">
-  ₦{(inv.amount + inv.yieldEarned).toLocaleString()}
-</td>
+                              ₦{inv.yieldEarned.toLocaleString()}
+                            </td>
+                            <td className="p-2 text-right font-mono text-[#34D399] font-bold">
+                              ₦{(inv.amount + inv.yieldEarned).toLocaleString()}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -461,11 +576,19 @@ const loadUsersData = async () => {
               {/* Box 2: Inbound Capital Flow Logs */}
               <div className="border border-slate-800 bg-[#1F2937] p-4 space-y-3">
                 <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">Inbound Receipts History</h4>
-                  <p className="text-[11px] text-[#9CA3AF]">Chronological history of external funding events into account wallet balance.</p>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                    Inbound Receipts History
+                  </h4>
+                  <p className="text-[11px] text-[#9CA3AF]">
+                    Chronological history of external funding events into
+                    account wallet balance.
+                  </p>
                 </div>
-                {!selectedUser.inboundHistory || selectedUser.inboundHistory.length === 0 ? (
-                  <p className="text-xs text-[#9CA3AF] italic bg-[#090A0F] p-3 text-center border border-slate-800">No historical deposit records found.</p>
+                {!selectedUser.inboundHistory ||
+                selectedUser.inboundHistory.length === 0 ? (
+                  <p className="text-xs text-[#9CA3AF] italic bg-[#090A0F] p-3 text-center border border-slate-800">
+                    No historical deposit records found.
+                  </p>
                 ) : (
                   <div className="border border-slate-800 overflow-hidden bg-[#090A0F]">
                     <table className="w-full text-left border-collapse text-[11px]">
@@ -478,10 +601,17 @@ const loadUsersData = async () => {
                       </thead>
                       <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
                         {selectedUser.inboundHistory.map((txn, idx) => (
-                          <tr key={txn.reference || idx} className="hover:bg-[#1F2937]/40">
-                            <td className="p-2 font-semibold text-white">{txn.method}</td>
+                          <tr
+                            key={txn.reference || idx}
+                            className="hover:bg-[#1F2937]/40"
+                          >
+                            <td className="p-2 font-semibold text-white">
+                              {txn.method}
+                            </td>
                             <td className="p-2 text-[#9CA3AF]">{txn.date}</td>
-                            <td className="p-2 text-right font-mono text-[#3B82F6] font-bold">₦{txn.amount.toLocaleString()}</td>
+                            <td className="p-2 text-right font-mono text-[#3B82F6] font-bold">
+                              ₦{txn.amount.toLocaleString()}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -489,7 +619,6 @@ const loadUsersData = async () => {
                   </div>
                 )}
               </div>
-
             </div>
 
             {/* Quick Micro Action Controllers */}
@@ -508,7 +637,6 @@ const loadUsersData = async () => {
                 → Allocate Investment
               </button>
             </div> */}
-
           </motion.div>
         )}
       </AnimatePresence>
@@ -517,15 +645,15 @@ const loadUsersData = async () => {
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => !isSubmitting && setIsModalOpen(false)} 
-              className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-xs" 
+              onClick={() => !isSubmitting && setIsModalOpen(false)}
+              className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-xs"
             />
-            
-            <motion.div 
+
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -537,8 +665,8 @@ const loadUsersData = async () => {
                   <UserPlus size={18} className="text-[#34D399]" />
                   <h3 className="font-bold text-base">Register Profile</h3>
                 </div>
-                <button 
-                  onClick={() => !isSubmitting && setIsModalOpen(false)} 
+                <button
+                  onClick={() => !isSubmitting && setIsModalOpen(false)}
                   disabled={isSubmitting}
                   className="text-[#9CA3AF] hover:text-white font-bold text-sm disabled:opacity-30 cursor-pointer"
                 >
@@ -547,14 +675,17 @@ const loadUsersData = async () => {
               </div>
 
               <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                Create a verified system account instance to register capital flows inside pool packages.
+                Create a verified system account instance to register capital
+                flows inside pool packages.
               </p>
 
               <form onSubmit={handleCreateUser} className="space-y-4 text-xs">
                 <div className="space-y-1.5">
-                  <label className="font-bold text-[#9CA3AF] block">Full Legal Name</label>
-                  <input 
-                    type="text" 
+                  <label className="font-bold text-[#9CA3AF] block">
+                    Full Legal Name
+                  </label>
+                  <input
+                    type="text"
                     required
                     disabled={isSubmitting}
                     value={newUserName}
@@ -565,9 +696,11 @@ const loadUsersData = async () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-bold text-[#9CA3AF] block">Corporate / Personal Email</label>
-                  <input 
-                    type="email" 
+                  <label className="font-bold text-[#9CA3AF] block">
+                    Corporate / Personal Email
+                  </label>
+                  <input
+                    type="email"
                     required
                     disabled={isSubmitting}
                     value={newUserEmail}
@@ -578,9 +711,11 @@ const loadUsersData = async () => {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="font-bold text-[#9CA3AF] block">Phone Number</label>
-                  <input 
-                    type="tel" 
+                  <label className="font-bold text-[#9CA3AF] block">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
                     required
                     disabled={isSubmitting}
                     value={newUserPhone}
@@ -612,7 +747,6 @@ const loadUsersData = async () => {
           </div>
         )}
       </AnimatePresence>
-
     </div>
   );
 };

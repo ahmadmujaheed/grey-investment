@@ -5,6 +5,7 @@ import {
   Percent,
   Calculator,
   Building,
+  Users,
 } from "lucide-react";
 import { motion } from "motion/react";
 import {
@@ -153,15 +154,23 @@ const Dashboard = () => {
 
   // Safe fallback bindings if the database response collections match empty states
   const summary = analyticsData?.summaryCards || {
-    totalAssetUnderManagement: 0,
+    totalInvestedCapital: 0,
     totalRegisteredUsers: 0,
-    totalPoolsDeployed: 0,
+    totalSystemProfit: 0,
+    companyRevenue: 0,
   };
+
+  const totalCapital = summary.totalInvestedCapital;
+  const totalProfit = summary.totalSystemProfit;
+  const companyRevenue = summary.companyRevenue;
+  const totalUsers = summary.totalRegisteredUsers;
   const charts = analyticsData?.chartData || [];
 
   // Derived dashboard company values calculated over real-time database AUM pools
-  const dynamicTotalInvestorCut = analyticsData?.summaryCards?.totalYieldEarned || 0;
-const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 0;
+  const dynamicTotalInvestorCut =
+    analyticsData?.summaryCards?.totalYieldEarned || 0;
+  const dynamicTotalCompanyCut =
+    analyticsData?.summaryCards?.totalCompanyFees || 0;
 
   return (
     <motion.div
@@ -195,14 +204,16 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Total Capital AUM
+              Total Invested Capital
             </span>
+
             <h3 className="text-2xl font-bold text-white">
-              {formatNaira(summary.totalAssetUnderManagement)}
+              {formatNaira(totalCapital)}
             </h3>
+
             <span className="text-xs font-semibold text-[#34D399] flex items-center gap-1">
-              <TrendingUp size={12} /> Actively investing across{" "}
-              {summary.totalPoolsDeployed} Pools
+              <TrendingUp size={12} />
+              Capital currently under management
             </span>
           </div>
           <div className="w-11 h-11 bg-[#090A0F] text-[#34D399] rounded-lg flex items-center justify-center font-bold text-xl">
@@ -217,11 +228,12 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Estimated Investor Payout 
+              Estimated Investor Payout
             </span>
             <h3 className="text-2xl font-bold text-[#34D399]">
               {formatNaira(dynamicTotalInvestorCut)}
             </h3>
+
             <span className="text-xs text-[#9CA3AF] block">
               Aggregated yield allocations in tracking matrix
             </span>
@@ -238,17 +250,66 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Company Management Cut 
+              Company Management Cut
             </span>
             <h3 className="text-2xl font-bold text-slate-300">
-              {formatNaira(dynamicTotalCompanyCut)}
+              {formatNaira(companyRevenue)}
             </h3>
+
             <span className="text-xs text-[#9CA3AF] block">
-              Covers platform fees and system maintenance
+              Revenue earned by Grey Investment
             </span>
           </div>
           <div className="p-3 bg-[#090A0F] text-[#9CA3AF] rounded-lg">
             <Building size={20} />
+          </div>
+        </motion.div>
+
+        {/* TCard 5 */}
+        <motion.div
+          variants={fadeInUp}
+          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
+              Total System Profit
+            </span>
+
+            <h3 className="text-2xl font-bold text-emerald-400">
+              {formatNaira(summary.totalSystemProfit)}
+            </h3>
+
+            <span className="text-xs text-[#9CA3AF] block">
+              Profit generated from all investments
+            </span>
+          </div>
+
+          <div className="p-3 bg-[#090A0F] text-emerald-400 rounded-lg">
+            <TrendingUp size={20} />
+          </div>
+        </motion.div>
+
+        {/* Card 5 */}
+        <motion.div
+          variants={fadeInUp}
+          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
+              Registered Investors
+            </span>
+
+            <h3 className="text-2xl font-bold text-blue-400">
+              {summary.totalRegisteredUsers}
+            </h3>
+
+            <span className="text-xs text-[#9CA3AF] block">
+              Active users on Grey Investment
+            </span>
+          </div>
+
+          <div className="p-3 bg-[#090A0F] text-blue-400 rounded-lg">
+            <Users size={20} />
           </div>
         </motion.div>
       </motion.div>
@@ -276,50 +337,31 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={charts}
-                  margin={{ top: 10, right: 5, left: -10, bottom: 0 }}
-                >
+                <BarChart data={charts}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="#2D3748"
                     vertical={false}
                   />
-                  <XAxis
-                    dataKey="month"
-                    stroke="#6B7280"
-                    fontSize={12}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    stroke="#6B7280"
-                    fontSize={11}
-                    tickLine={false}
-                    tickFormatter={formatAxisValues}
-                  />
+
+                  <XAxis dataKey="name" stroke="#6B7280" tickLine={false} />
+
+                  <YAxis stroke="#6B7280" tickFormatter={formatAxisValues} />
+
                   <Tooltip
-                    cursor={{ fill: "#090A0F", opacity: 0.4 }}
+                    formatter={(value) => [formatNaira(value)]}
                     contentStyle={{
-                      backgroundColor: "#1F2937",
+                      // backgroundColor: "#1F2937",
                       borderColor: "#4B5563",
-                      color: "#fff",
                       borderRadius: "8px",
                     }}
-                    formatter={(value) => [formatNaira(value)]}
                   />
+
                   <Bar
-                    dataKey="NetProfit"
-                    fill="#4B5563"
-                    radius={[4, 4, 0, 0]}
-                    name="Gross Pool Profit"
-                    barSize={24}
-                  />
-                  <Bar
-                    dataKey="YourShare"
+                    dataKey="amount"
                     fill="#34D399"
-                    radius={[4, 4, 0, 0]}
-                    name="Your Payout (45%)"
-                    barSize={24}
+                    radius={[8, 8, 0, 0]}
+                    barSize={30}
                   />
                 </BarChart>
               </ResponsiveContainer>

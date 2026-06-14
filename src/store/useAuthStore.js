@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 export const useAuthStore = create((set, get) => ({
   // Base config parameters
-//   baseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
+  // baseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
    baseUrl: import.meta.env.VITE_API_BASE_URL || "https://grey-investment-server.onrender.com/api",
   
   // Auth state variables - Now pulling safely from sessionStorage
