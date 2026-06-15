@@ -18,10 +18,14 @@ import {
   Wallet,
   Coins,
 } from "lucide-react";
-import { Popconfirm } from "antd"
+import { Popconfirm } from "antd";
 import { motion, AnimatePresence } from "motion/react";
 import { message } from "antd";
-import { fetchAllUsers, provisionNewUser, resetUserPassword } from "../api/userApi";
+import {
+  fetchAllUsers,
+  provisionNewUser,
+  resetUserPassword,
+} from "../api/userApi";
 
 const fadeInUpRow = {
   hidden: { opacity: 0, y: 8 },
@@ -121,7 +125,7 @@ const Users = () => {
     loadUsersData();
   }, []);
 
-  console.log(selectedUser, "this is the user")
+  // console.log(selectedUser, "this is the user");
 
   // Sync state view node with browser routing deep-link indicators
   useEffect(() => {
@@ -197,16 +201,18 @@ const Users = () => {
     }
   };
 
- const handleResetPassword = async (userId) => {
-  try {
-    // Ensure this name matches the import above
-    await resetUserPassword(userId); 
-    message.success("Password successfully reset to default.");
-  } catch (error) {
-    // Provide better error feedback
-    message.error(error.response?.data?.message || "Failed to reset password.");
-  }
-};
+  const handleResetPassword = async (userId) => {
+    try {
+      // Ensure this name matches the import above
+      await resetUserPassword(userId);
+      message.success("Password successfully reset to default.");
+    } catch (error) {
+      // Provide better error feedback
+      message.error(
+        error.response?.data?.message || "Failed to reset password.",
+      );
+    }
+  };
 
   const filteredUsers = users.filter(
     (user) =>
@@ -445,15 +451,15 @@ const Users = () => {
                   <Download size={12} /> Audit Trail
                 </button>
                 <Popconfirm
-  title="Reset this user's password to 'investment'?"
-  onConfirm={() => handleResetPassword(selectedUser?.id)}
-  okText="Reset"
-  cancelText="Cancel"
->
-  <button className="flex items-center gap-1 px-2.5 py-1 border border-slate-800 text-[11px] font-bold hover:bg-[#1F2937] transition-colors text-white cursor-pointer">
-    Reset User Password
-  </button>
-</Popconfirm>
+                  title="Reset this user's password to 'investment'?"
+                  onConfirm={() => handleResetPassword(selectedUser?.id)}
+                  okText="Reset"
+                  cancelText="Cancel"
+                >
+                  <button className="flex items-center gap-1 px-2.5 py-1 border border-slate-800 text-[11px] font-bold hover:bg-[#1F2937] transition-colors text-white cursor-pointer">
+                    Reset User Password
+                  </button>
+                </Popconfirm>
               </div>
             </div>
 

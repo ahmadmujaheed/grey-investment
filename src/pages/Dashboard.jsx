@@ -37,12 +37,28 @@ const staggerContainer = {
 };
 
 // Standard local currency formatter helper
-const formatNaira = (value) => {
+/**
+ * Formats currency based on amount size.
+ * Uses full formatting for small amounts and compact (M/B) for large totals.
+ */
+const formatNaira = (amount = 0) => {
+  // Handle Billions
+  if (amount >= 1_000_000_000) {
+    return `₦${(amount / 1_000_000_000).toFixed(1)}B`;
+  }
+
+  // Handle Millions
+  if (amount >= 1_000_000) {
+    return `₦${(amount / 1_000_000).toFixed(1)}M`;
+  }
+
+  // Handle standard amounts (Thousands, Hundreds)
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
     minimumFractionDigits: 2,
-  }).format(value);
+    maximumFractionDigits: 2,
+  }).format(amount);
 };
 
 // Simplified chart axis numerical formatter (e.g., 2M, 500k)
@@ -62,14 +78,27 @@ const Dashboard = () => {
   const [companyPct, setCompanyPct] = useState("");
   const [calcAmount, setCalcAmount] = useState("");
 
-  const totalProfitGenerated = parseFloat(calcAmount) || 0;
-  const companyCut = totalProfitGenerated * 0.55;
-  const investorCut = totalProfitGenerated * 0.45;
+  const numericCalcAmount = parseFloat(calcAmount.replace(/,/g, "")) || 0;
+  const investorPayout = numericCalcAmount * ((investorPct || 0) / 100);
+  const companyFee = numericCalcAmount * ((companyPct || 0) / 100);
 
   const handleInvestorPctChange = (val) => {
     const v = Math.min(100, Math.max(0, parseFloat(val) || 0));
     setInvestorPct(v);
     setCompanyPct(100 - v);
+  };
+
+  const handleAmountChange = (e) => {
+    const rawValue = e.target.value.replace(/[^0-9]/g, ""); // Strip everything but digits
+
+    if (rawValue === "") {
+      setCalcAmount("");
+      return;
+    }
+
+    // Format for display
+    const formatted = new Intl.NumberFormat("en-US").format(rawValue);
+    setCalcAmount(formatted);
   };
 
   // 🔄 Request live backend data calculations on component mount
@@ -155,6 +184,7 @@ const Dashboard = () => {
   // Safe fallback bindings if the database response collections match empty states
   const summary = analyticsData?.summaryCards || {
     totalInvestedCapital: 0,
+    totalPaidOut: 0,
     totalRegisteredUsers: 0,
     totalSystemProfit: 0,
     companyRevenue: 0,
@@ -162,6 +192,7 @@ const Dashboard = () => {
 
   const totalCapital = summary.totalInvestedCapital;
   const totalProfit = summary.totalSystemProfit;
+  const totalPaidOut = summary.totalPaidOut;
   const companyRevenue = summary.companyRevenue;
   const totalUsers = summary.totalRegisteredUsers;
   const charts = analyticsData?.chartData || [];
@@ -207,7 +238,13 @@ const Dashboard = () => {
               Total Invested Capital
             </span>
 
-            <h3 className="text-2xl font-bold text-white">
+            <h3
+              className="text-2xl font-bold text-white"
+              title={new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(totalCapital)}
+            >
               {formatNaira(totalCapital)}
             </h3>
 
@@ -230,8 +267,14 @@ const Dashboard = () => {
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
               Estimated Investor Payout
             </span>
-            <h3 className="text-2xl font-bold text-[#34D399]">
-              {formatNaira(dynamicTotalInvestorCut)}
+            <h3
+              className="text-2xl font-bold text-white"
+              title={new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(totalPaidOut)}
+            >
+              {formatNaira(totalPaidOut)}
             </h3>
 
             <span className="text-xs text-[#9CA3AF] block">
@@ -252,7 +295,13 @@ const Dashboard = () => {
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
               Company Management Cut
             </span>
-            <h3 className="text-2xl font-bold text-slate-300">
+            <h3
+              className="text-2xl font-bold text-white"
+              title={new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(companyRevenue)}
+            >
               {formatNaira(companyRevenue)}
             </h3>
 
@@ -275,7 +324,13 @@ const Dashboard = () => {
               Total System Profit
             </span>
 
-            <h3 className="text-2xl font-bold text-emerald-400">
+            <h3
+              className="text-2xl font-bold text-white"
+              title={new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(summary.totalSystemProfit)}
+            >
               {formatNaira(summary.totalSystemProfit)}
             </h3>
 
@@ -343,17 +398,17 @@ const Dashboard = () => {
                     stroke="#2D3748"
                     vertical={false}
                   />
-
                   <XAxis dataKey="name" stroke="#6B7280" tickLine={false} />
-
                   <YAxis stroke="#6B7280" tickFormatter={formatAxisValues} />
 
                   <Tooltip
+                    cursor={false}
                     formatter={(value) => [formatNaira(value)]}
                     contentStyle={{
-                      // backgroundColor: "#1F2937",
-                      borderColor: "#4B5563",
+                      backgroundColor: "#1F2937", // Matches your card background
+                      borderColor: "#374151", // Slate-700 for a subtle border
                       borderRadius: "8px",
+                      color: "#F3F4F6", // Light text color
                     }}
                   />
 
@@ -362,6 +417,8 @@ const Dashboard = () => {
                     fill="#34D399"
                     radius={[8, 8, 0, 0]}
                     barSize={30}
+                    // 2. Add an activeBar prop to customize or remove the hover highlight on the bar itself
+                    activeBar={{ fill: "#10B981" }}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -386,9 +443,10 @@ const Dashboard = () => {
             </p>
 
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={calcAmount}
-              onChange={(e) => setCalcAmount(e.target.value)}
+              onChange={handleAmountChange}
               className="w-full px-3 py-2 bg-[#090A0F] border border-slate-700  text-white"
               placeholder="Enter Profit Amount"
             />
@@ -417,13 +475,13 @@ const Dashboard = () => {
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">Investor Payout:</span>
                 <span className="font-bold text-[#34D399]">
-                  {formatNaira(calcAmount * (investorPct / 100))}
+                  {formatNaira(investorPayout)}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">Company Fee:</span>
                 <span className="font-bold text-slate-300">
-                  {formatNaira(calcAmount * (companyPct / 100))}
+                  {formatNaira(companyFee)}
                 </span>
               </div>
             </div>

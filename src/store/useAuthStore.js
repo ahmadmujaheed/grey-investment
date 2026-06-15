@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import axios from "axios";
 
 export const useAuthStore = create((set, get) => ({
   // Base config parameters
@@ -10,6 +11,29 @@ export const useAuthStore = create((set, get) => ({
   user: sessionStorage.getItem("auth_user") ? JSON.parse(sessionStorage.getItem("auth_user")) : null,
   isAuthenticated: !!sessionStorage.getItem("auth_token"),
   loading: false,
+
+
+  /**
+   * Fetches the current user from the server to sync state
+   */
+checkAuth: async () => {
+  set({ loading: true });
+  try {
+    const res = await axios.get(`${get().baseUrl}/auth/me`, {
+      headers: { Authorization: `Bearer ${get().token}` }
+    });
+    set({ user: res.data, isAuthenticated: true });
+  } catch (error) {
+    console.error("Auth check failed:", error);
+    // REMOVE or COMMENT OUT the line below:
+    // get().logout(); 
+    
+    // Instead, just clear state locally
+    set({ user: null, isAuthenticated: false });
+  } finally {
+    set({ loading: false });
+  }
+},
 
   /**
    * Complete login session by storing tokens and profile context in sessionStorage
@@ -44,6 +68,7 @@ export const useAuthStore = create((set, get) => ({
    * Clear the entire auth session and wipe sessionStorage details on logout
    */
   logout: () => {
+    console.trace("Logout called from:");
     sessionStorage.removeItem("auth_token");
     sessionStorage.removeItem("auth_user");
     

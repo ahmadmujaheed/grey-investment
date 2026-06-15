@@ -33,6 +33,19 @@
   font-weight: bold;
 }
 
+.custom-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #34D399 !important;
+  font-weight: bold;
+}
+.custom-tabs .ant-tabs-ink-bar {
+  background: #34D399 !important;
+}
+.ant-tag {
+  border-radius: 9999px !important;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
 /* :root {
   --text: #6b6375;
   --text-h: #08060d;

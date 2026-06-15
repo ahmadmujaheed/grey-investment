@@ -3,7 +3,7 @@ import apiClient from "./apiClient";
 // 👥 1. Fetch All Registered Platform Users with Aggregated Metrics
 export const fetchAllUsers = async () => {
   const response = await apiClient.get("/users");
-  console.log(response)
+  // console.log(response)
   return response.data;
 };
 
@@ -17,7 +17,7 @@ export const fetchUserById = async (userId) => {
 export const provisionNewUser = async (userData) => {
   // userData structure: { name, email, phone }
   const response = await apiClient.post("/users", userData);
-  console.log(response);
+  // console.log(response);
   return response.data;
 };
 

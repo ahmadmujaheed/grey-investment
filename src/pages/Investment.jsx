@@ -145,6 +145,38 @@ const Investment = () => {
   };
 
   // 2. CREATE: Deploys fresh package structure using form payload context mapping
+  // const handleCreateInvestment = async (e) => {
+  //   e.preventDefault();
+  //   if (!newName || !newAmount) return;
+
+  //   try {
+  //     setLoading(true);
+  //     const payloadFormData = new FormData();
+  //     payloadFormData.append("title", newName);
+  //     payloadFormData.append("targetAmount", newAmount);
+  //     if (rawUploadFile) {
+  //       payloadFormData.append("image", rawUploadFile);
+  //     }
+
+  //     await createInvestment(payloadFormData);
+  //     message.success("Investment package deployed successfully!");
+
+  //     setNewName("");
+  //     setNewAmount("");
+  //     setRawUploadFile(null);
+  //     setPreviewImageUrl("");
+  //     setIsCreateOpen(false);
+
+  //     await loadPlatformAssets(true);
+  //   } catch (error) {
+  //     message.error(
+  //       error.response?.data?.message || "Error creating package tier.",
+  //     );
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleSaveInvestment = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -239,6 +271,21 @@ const Investment = () => {
     }
   };
 
+  // const getArchivedInvestments = async () => {
+  //   try {
+  //     setGettingArchived(true);
+  //     const data = await fetchArchivedInvestments();
+  //     // console.log("Archived Investments:", data);
+  //     setPackages(data);
+  //     // setSelectedPackage(data); // Clear any selected package to avoid mismatch with active list
+  //     // We set a state to track that we are viewing archived items
+  //     setInvestmentStatus("archived");
+  //   } catch (error) {
+  //     message.error("Failed to load archived investment packages.");
+  //   } finally {
+  //     setGettingArchived(false);
+  //   }
+  // };
 
   const getArchivedInvestments = async () => {
     try {
@@ -269,6 +316,7 @@ const Investment = () => {
   };
 
   // 5. DISTRIBUTE: Triggers equity splits and ends funding cycle
+
   const handleDistributeProfit = async (e) => {
     e.preventDefault();
     setDistribute(true);
