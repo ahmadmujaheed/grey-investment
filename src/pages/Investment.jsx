@@ -288,71 +288,35 @@ const Investment = () => {
   // };
 
   const getArchivedInvestments = async () => {
-  try {
-    setGettingArchived(true);
-    const response = await fetchArchivedInvestments();
-    // Ensure we always set an array
-    setPackages(Array.isArray(response) ? response : (response.data || []));
-    setInvestmentStatus("archived");
-  } catch (error) {
-    message.error("Failed to load archived investment packages.");
-  } finally {
-    setGettingArchived(false);
-  }
-};
+    try {
+      setGettingArchived(true);
+      const response = await fetchArchivedInvestments();
+      // Ensure we always set an array
+      setPackages(Array.isArray(response) ? response : response.data || []);
+      setInvestmentStatus("archived");
+    } catch (error) {
+      message.error("Failed to load archived investment packages.");
+    } finally {
+      setGettingArchived(false);
+    }
+  };
 
   const getActiveInvestments = async () => {
-  try {
-    setGettingActive(true);
-    const response = await fetchAllInvestments();
-    // Ensure we always set an array
-    setPackages(Array.isArray(response) ? response : (response.data || []));
-    setInvestmentStatus("active");
-  } catch (error) {
-    message.error("Failed to load active investment packages.");
-  } finally {
-    setGettingActive(false);
-  }
-};
+    try {
+      setGettingActive(true);
+      const response = await fetchAllInvestments();
+      // Ensure we always set an array
+      setPackages(Array.isArray(response) ? response : response.data || []);
+      setInvestmentStatus("active");
+    } catch (error) {
+      message.error("Failed to load active investment packages.");
+    } finally {
+      setGettingActive(false);
+    }
+  };
 
   // 5. DISTRIBUTE: Triggers equity splits and ends funding cycle
-  // const handleDistributeProfit = async (e) => {
-  //   e.preventDefault();
-  //   const profit = parseFloat(inputProfitAmount);
 
-  //   setDistribute(true);
-
-  //   if (!profit || profit <= 0) {
-  //     message.error("Please enter a valid profit distribution value.");
-  //     return;
-  //   }
-
-  //   try {
-  //     // setLoading(true);
-  //     const data = await distributeInvestmentProfits(
-  //       selectedPackage._id,
-  //       profit,
-  //     );
-
-  //     const companyShare = profit * 0.55;
-  //     const investorsTotalShare = profit * 0.45;
-
-  //     message.success(
-  //       `Split Logged: ₦${companyShare.toLocaleString()} (55%) to corporate vault & ₦${investorsTotalShare.toLocaleString()} (45%) added to investor stakes.`,
-  //     );
-
-  //     setSelectedPackage(data.updatedPackage);
-  //     setInputProfitAmount("");
-  //     await loadPlatformAssets(false);
-  //   } catch (error) {
-  //     message.error(
-  //       error.response?.data?.message ||
-  //         "Profit allocation process initialization failure.",
-  //     );
-  //   } finally {
-  //     setDistribute(false);
-  //   }
-  // };
   const handleDistributeProfit = async (e) => {
     e.preventDefault();
     setDistribute(true);
@@ -374,45 +338,51 @@ const Investment = () => {
     }
   };
 
-  console.log(selectedPackage);
+ const removeInvestor = async (userId) => {
+  try {
+    setIsRemoving(true);
+    
+    // 1. Perform the API call
+    await removeUserFromPool(selectedPackage._id, userId);
+    message.success("Investor removed successfully!");
 
-  const removeInvestor = async (userId) => {
-    try {
-      setIsRemoving(true);
-      await removeUserFromPool(selectedPackage._id, userId);
-      message.success("Investor removed from pool roster successfully!");
-      console.log(selectedPackage._id, userId);
-      // 1. Calculate the new totalAmount by summing the remaining investors
-      const updatedInvestors = selectedPackage.investors.filter(
-        (inv) => inv.user._id !== userId,
-      );
+    // 2. Derive the new state locally immediately
+    // Filter the investor out from the current local array
+    const updatedInvestors = selectedPackage.investors.filter(
+      (inv) => inv.user._id !== userId
+    );
 
-      const newTotalAmount = updatedInvestors.reduce(
-        (sum, inv) => sum + (Number(inv.amount) || 0),
-        0,
-      );
+    // Calculate the new totalAmount based on the remaining investors
+    const newTotalAmount = updatedInvestors.reduce(
+      (sum, inv) => sum + (Number(inv.amount) || 0),
+      0
+    );
 
-      // 2. Update the local state with the filtered array AND the new total
-      setSelectedPackage((prev) => ({
-        ...prev,
-        investors: updatedInvestors,
-        totalAmount: newTotalAmount, // This forces the UI to re-render with the new base
-      }));
+    // 3. Update the "selectedPackage" state
+    // This triggers an instant re-render of the modal/panel
+    setSelectedPackage((prev) => ({
+      ...prev,
+      investors: updatedInvestors,
+      totalAmount: newTotalAmount,
+    }));
 
-      // 3. Update the global packages list as well
-      setPackages((prev) =>
-        prev.map((p) =>
-          p._id === selectedPackage._id
-            ? { ...p, investors: updatedInvestors, totalAmount: newTotalAmount }
-            : p,
-        ),
-      );
-    } catch (error) {
-      message.error("Failed to remove investor from pool roster.");
-    } finally {
-      setIsRemoving(false);
-    }
-  };
+    // 4. Update the "packages" list (The main grid)
+    // This ensures the main dashboard reflects the change without a reload
+    setPackages((prev) =>
+      prev.map((p) =>
+        p._id === selectedPackage._id
+          ? { ...p, investors: updatedInvestors, totalAmount: newTotalAmount }
+          : p
+      )
+    );
+
+  } catch (error) {
+    message.error("Failed to remove investor.");
+    console.error(error);
+  } finally {
+    setIsRemoving(false);
+  }
+};
 
   // console.log(selectedPackage);
 
@@ -703,15 +673,13 @@ const Investment = () => {
                           ₦{selectedPackage.targetAmount?.toLocaleString() || 0}
                         </span>
                       </div>
-                      
+
                       <div>
                         <span className="text-[#9CA3AF] block">
                           Current Capital Asset Base
                         </span>
                         <span className="text-xl font-bold text-[#34D399]">
-                          ₦
-                          {(
-                            selectedPackage.totalAmount).toLocaleString()}
+                          ₦{selectedPackage.totalAmount.toLocaleString()}
                         </span>
                       </div>
                       {/* <div>
@@ -729,7 +697,7 @@ const Investment = () => {
                           ).toLocaleString()}
                         </span>
                       </div> */}
-                      
+
                       <div>
                         <span className="text-[#9CA3AF] block">
                           Stakeholder Headcount
@@ -819,12 +787,7 @@ const Investment = () => {
                               <div className="col-span-2 text-right">
                                 <Popconfirm
                                   title="Remove Investor"
-                                  onConfirm={() =>
-                                    removeInvestor(
-                                      selectedPackage._id,
-                                      inv.user._id,
-                                    )
-                                  }
+                                  onConfirm={() => removeInvestor(inv.user._id)}
                                   okText="Remove"
                                   okButtonProps={{
                                     danger: true,

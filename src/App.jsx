@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Investment from "./pages/Investment";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Request from "./pages/Request";
 
 // Shared Pages
 import Profile from "./pages/Profile";
@@ -42,6 +43,8 @@ const App = () => {
           <Route path="users" element={<Users />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="requests" element={<Request />} />
+
         </Route>
       </Route>
 

@@ -5,6 +5,7 @@ import {
   Percent,
   Calculator,
   Building,
+  Users,
 } from "lucide-react";
 import { motion } from "motion/react";
 import {
@@ -36,12 +37,28 @@ const staggerContainer = {
 };
 
 // Standard local currency formatter helper
-const formatNaira = (value) => {
+/**
+ * Formats currency based on amount size.
+ * Uses full formatting for small amounts and compact (M/B) for large totals.
+ */
+const formatNaira = (amount = 0) => {
+  // Handle Billions
+  if (amount >= 1_000_000_000) {
+    return `₦${(amount / 1_000_000_000).toFixed(1)}B`;
+  }
+
+  // Handle Millions
+  if (amount >= 1_000_000) {
+    return `₦${(amount / 1_000_000).toFixed(1)}M`;
+  }
+
+  // Handle standard amounts (Thousands, Hundreds)
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
     minimumFractionDigits: 2,
-  }).format(value);
+    maximumFractionDigits: 2,
+  }).format(amount);
 };
 
 // Simplified chart axis numerical formatter (e.g., 2M, 500k)
@@ -61,14 +78,27 @@ const Dashboard = () => {
   const [companyPct, setCompanyPct] = useState("");
   const [calcAmount, setCalcAmount] = useState("");
 
-  const totalProfitGenerated = parseFloat(calcAmount) || 0;
-  const companyCut = totalProfitGenerated * 0.55;
-  const investorCut = totalProfitGenerated * 0.45;
+  const numericCalcAmount = parseFloat(calcAmount.replace(/,/g, "")) || 0;
+  const investorPayout = numericCalcAmount * ((investorPct || 0) / 100);
+  const companyFee = numericCalcAmount * ((companyPct || 0) / 100);
 
   const handleInvestorPctChange = (val) => {
     const v = Math.min(100, Math.max(0, parseFloat(val) || 0));
     setInvestorPct(v);
     setCompanyPct(100 - v);
+  };
+
+  const handleAmountChange = (e) => {
+    const rawValue = e.target.value.replace(/[^0-9]/g, ""); // Strip everything but digits
+
+    if (rawValue === "") {
+      setCalcAmount("");
+      return;
+    }
+
+    // Format for display
+    const formatted = new Intl.NumberFormat("en-US").format(rawValue);
+    setCalcAmount(formatted);
   };
 
   // 🔄 Request live backend data calculations on component mount
@@ -153,15 +183,25 @@ const Dashboard = () => {
 
   // Safe fallback bindings if the database response collections match empty states
   const summary = analyticsData?.summaryCards || {
-    totalAssetUnderManagement: 0,
+    totalInvestedCapital: 0,
+    totalPaidOut: 0,
     totalRegisteredUsers: 0,
-    totalPoolsDeployed: 0,
+    totalSystemProfit: 0,
+    companyRevenue: 0,
   };
+
+  const totalCapital = summary.totalInvestedCapital;
+  const totalProfit = summary.totalSystemProfit;
+  const totalPaidOut = summary.totalPaidOut;
+  const companyRevenue = summary.companyRevenue;
+  const totalUsers = summary.totalRegisteredUsers;
   const charts = analyticsData?.chartData || [];
 
   // Derived dashboard company values calculated over real-time database AUM pools
-  const dynamicTotalInvestorCut = analyticsData?.summaryCards?.totalYieldEarned || 0;
-const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 0;
+  const dynamicTotalInvestorCut =
+    analyticsData?.summaryCards?.totalYieldEarned || 0;
+  const dynamicTotalCompanyCut =
+    analyticsData?.summaryCards?.totalCompanyFees || 0;
 
   return (
     <motion.div
@@ -195,14 +235,22 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Total Capital AUM
+              Total Invested Capital
             </span>
-            <h3 className="text-2xl font-bold text-white">
-              {formatNaira(summary.totalAssetUnderManagement)}
+
+            <h3
+              className="text-2xl font-bold text-white"
+              title={new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(totalCapital)}
+            >
+              {formatNaira(totalCapital)}
             </h3>
+
             <span className="text-xs font-semibold text-[#34D399] flex items-center gap-1">
-              <TrendingUp size={12} /> Actively investing across{" "}
-              {summary.totalPoolsDeployed} Pools
+              <TrendingUp size={12} />
+              Capital currently under management
             </span>
           </div>
           <div className="w-11 h-11 bg-[#090A0F] text-[#34D399] rounded-lg flex items-center justify-center font-bold text-xl">
@@ -217,11 +265,18 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Estimated Investor Payout 
+              Estimated Investor Payout
             </span>
-            <h3 className="text-2xl font-bold text-[#34D399]">
-              {formatNaira(dynamicTotalInvestorCut)}
+            <h3
+              className="text-2xl font-bold text-white"
+              title={new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(totalPaidOut)}
+            >
+              {formatNaira(totalPaidOut)}
             </h3>
+
             <span className="text-xs text-[#9CA3AF] block">
               Aggregated yield allocations in tracking matrix
             </span>
@@ -238,17 +293,78 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
         >
           <div className="space-y-1">
             <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Company Management Cut 
+              Company Management Cut
             </span>
-            <h3 className="text-2xl font-bold text-slate-300">
-              {formatNaira(dynamicTotalCompanyCut)}
+            <h3
+              className="text-2xl font-bold text-white"
+              title={new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(companyRevenue)}
+            >
+              {formatNaira(companyRevenue)}
             </h3>
+
             <span className="text-xs text-[#9CA3AF] block">
-              Covers platform fees and system maintenance
+              Revenue earned by Grey Investment
             </span>
           </div>
           <div className="p-3 bg-[#090A0F] text-[#9CA3AF] rounded-lg">
             <Building size={20} />
+          </div>
+        </motion.div>
+
+        {/* TCard 5 */}
+        <motion.div
+          variants={fadeInUp}
+          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
+              Total System Profit
+            </span>
+
+            <h3
+              className="text-2xl font-bold text-white"
+              title={new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+              }).format(summary.totalSystemProfit)}
+            >
+              {formatNaira(summary.totalSystemProfit)}
+            </h3>
+
+            <span className="text-xs text-[#9CA3AF] block">
+              Profit generated from all investments
+            </span>
+          </div>
+
+          <div className="p-3 bg-[#090A0F] text-emerald-400 rounded-lg">
+            <TrendingUp size={20} />
+          </div>
+        </motion.div>
+
+        {/* Card 5 */}
+        <motion.div
+          variants={fadeInUp}
+          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
+        >
+          <div className="space-y-1">
+            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
+              Registered Investors
+            </span>
+
+            <h3 className="text-2xl font-bold text-blue-400">
+              {summary.totalRegisteredUsers}
+            </h3>
+
+            <span className="text-xs text-[#9CA3AF] block">
+              Active users on Grey Investment
+            </span>
+          </div>
+
+          <div className="p-3 bg-[#090A0F] text-blue-400 rounded-lg">
+            <Users size={20} />
           </div>
         </motion.div>
       </motion.div>
@@ -276,50 +392,33 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={charts}
-                  margin={{ top: 10, right: 5, left: -10, bottom: 0 }}
-                >
+                <BarChart data={charts}>
                   <CartesianGrid
                     strokeDasharray="3 3"
                     stroke="#2D3748"
                     vertical={false}
                   />
-                  <XAxis
-                    dataKey="month"
-                    stroke="#6B7280"
-                    fontSize={12}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    stroke="#6B7280"
-                    fontSize={11}
-                    tickLine={false}
-                    tickFormatter={formatAxisValues}
-                  />
+                  <XAxis dataKey="name" stroke="#6B7280" tickLine={false} />
+                  <YAxis stroke="#6B7280" tickFormatter={formatAxisValues} />
+
                   <Tooltip
-                    cursor={{ fill: "#090A0F", opacity: 0.4 }}
-                    contentStyle={{
-                      backgroundColor: "#1F2937",
-                      borderColor: "#4B5563",
-                      color: "#fff",
-                      borderRadius: "8px",
-                    }}
+                    cursor={false}
                     formatter={(value) => [formatNaira(value)]}
+                    contentStyle={{
+                      backgroundColor: "#1F2937", // Matches your card background
+                      borderColor: "#374151", // Slate-700 for a subtle border
+                      borderRadius: "8px",
+                      color: "#F3F4F6", // Light text color
+                    }}
                   />
+
                   <Bar
-                    dataKey="NetProfit"
-                    fill="#4B5563"
-                    radius={[4, 4, 0, 0]}
-                    name="Gross Pool Profit"
-                    barSize={24}
-                  />
-                  <Bar
-                    dataKey="YourShare"
+                    dataKey="amount"
                     fill="#34D399"
-                    radius={[4, 4, 0, 0]}
-                    name="Your Payout (45%)"
-                    barSize={24}
+                    radius={[8, 8, 0, 0]}
+                    barSize={30}
+                    // 2. Add an activeBar prop to customize or remove the hover highlight on the bar itself
+                    activeBar={{ fill: "#10B981" }}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -344,9 +443,10 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
             </p>
 
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={calcAmount}
-              onChange={(e) => setCalcAmount(e.target.value)}
+              onChange={handleAmountChange}
               className="w-full px-3 py-2 bg-[#090A0F] border border-slate-700  text-white"
               placeholder="Enter Profit Amount"
             />
@@ -375,13 +475,13 @@ const dynamicTotalCompanyCut = analyticsData?.summaryCards?.totalCompanyFees || 
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">Investor Payout:</span>
                 <span className="font-bold text-[#34D399]">
-                  {formatNaira(calcAmount * (investorPct / 100))}
+                  {formatNaira(investorPayout)}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">Company Fee:</span>
                 <span className="font-bold text-slate-300">
-                  {formatNaira(calcAmount * (companyPct / 100))}
+                  {formatNaira(companyFee)}
                 </span>
               </div>
             </div>

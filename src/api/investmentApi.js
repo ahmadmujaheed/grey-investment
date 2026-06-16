@@ -3,7 +3,7 @@ import apiClient from "./apiClient";
 // 1. Fetch All Active/Running Investment Packages (Paginated)
 export const fetchAllInvestments = async (page = 1, limit = 10) => {
   const response = await apiClient.get(`/investments?page=${page}&limit=${limit}`);
-  console.log(response)
+  // console.log(response)
   return response.data; 
   // Returns: { data: [...], currentPage, totalPages }
 };
@@ -37,7 +37,7 @@ export const distributeInvestmentProfits = async (investmentId, distributionData
     `/investments/${investmentId}/distribute-yield`, 
     distributionData
   );
-  console.log(response)
+  // console.log(response)
   return response.data;
 };
 
@@ -68,7 +68,6 @@ export const fetchAllUsers = async (page = 1, limit = 10) => {
 
 // 9. Remove User from Investment Pool
 export const removeUserFromPool = async (investmentId, userId) => {
-  console.log(investmentId, userId);
     const response = await apiClient.delete(`/investments/${investmentId}/evict-investor/${userId}`);
 //   console.log(response)
   return response.data;

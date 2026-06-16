@@ -9,16 +9,18 @@ import {
   LogOut,
   Bell,
 } from "lucide-react";
+import { Badge } from "antd";
 import { motion, AnimatePresence } from "motion/react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 
 // 🔌 Hook into your Zustand Auth Store
 import { useAuthStore } from "../store/useAuthStore";
+import { useRequestStore } from "../store/useRequestStore";
 
 const DashboardLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Extract state and logout mechanisms from store
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -57,6 +59,17 @@ const DashboardLayout = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const requests = useRequestStore((state) => state.requests);
+  const fetchRequests = useRequestStore((state) => state.fetchRequests);
+
+  // 3. Fetch data on mount
+  useEffect(() => {
+    fetchRequests();
+  }, [fetchRequests]);
+
+  // 4. Calculate length
+  const pendingCount = requests.filter((r) => r.status === "pending").length;
+
   const menuItems = [
     {
       id: "dashboard",
@@ -72,6 +85,13 @@ const DashboardLayout = () => {
     },
     { id: "users", label: "Users", icon: User, path: "/dashboard/users" },
     { id: "profile", label: "Profile", icon: User, path: "/dashboard/profile" },
+    {
+      id: "requests",
+      label: "Requests",
+      icon: Bell, 
+      path: "/dashboard/requests",
+      count: pendingCount, 
+    },
     {
       id: "settings",
       label: "Settings",
@@ -146,6 +166,7 @@ const DashboardLayout = () => {
       >
         {/* Navigation items */}
         <div className="px-4 space-y-1.5">
+          {/* Inside both Desktop and Mobile map functions */}
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -154,31 +175,24 @@ const DashboardLayout = () => {
               <Link
                 key={item.id}
                 to={item.path}
-                className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm group transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-semibold text-sm group transition-all ${
                   isActive
                     ? "bg-[#34D399] text-[#090A0F]"
                     : "text-[#9CA3AF] hover:bg-[#090A0F] hover:text-white"
                 }`}
               >
-                <div className="shrink-0">
-                  <Icon
-                    size={20}
-                    className={
-                      isActive
-                        ? "text-[#090A0F]"
-                        : "text-[#9CA3AF] group-hover:text-white"
-                    }
-                  />
+                <div className="flex items-center gap-4">
+                  <Icon size={20} />
+                  {(!isCollapsed || isMobileOpen) && <span>{item.label}</span>}
                 </div>
-                {!isCollapsed && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="whitespace-nowrap"
-                  >
-                    {item.label}
-                  </motion.span>
+
+                {/* Badge Rendering Logic */}
+                {item.count > 0 && (
+                  <Badge
+                    count={item.count}
+                    size="small"
+                    style={{ backgroundColor: "#EF4444" }} // Rose-500 color
+                  />
                 )}
               </Link>
             );
@@ -187,7 +201,7 @@ const DashboardLayout = () => {
 
         {/* Footer Logout Button (Desktop) */}
         <div className="px-4">
-          <button 
+          <button
             onClick={handleLogoutAction}
             className="w-full flex items-center gap-4 px-4 py-3 rounded-xl font-semibold text-sm text-rose-400 hover:bg-[#090A0F] transition-colors group cursor-pointer"
           >
@@ -250,7 +264,7 @@ const DashboardLayout = () => {
                   {menuItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = location.pathname === item.path;
-                    
+
                     return (
                       <Link
                         key={item.id}
@@ -271,7 +285,7 @@ const DashboardLayout = () => {
               </div>
 
               {/* Footer Logout Button (Mobile) */}
-              <button 
+              <button
                 onClick={() => {
                   setIsMobileOpen(false);
                   handleLogoutAction();
