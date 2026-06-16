@@ -16,5 +16,6 @@ export const fetchDashboardAnalytics = async () => {
  */
 export const fetchInvestorAnalytics = async () => {
   const response = await apiClient.get("/analytics/my-summary");
+  console.log(response)
   return response.data;
 };

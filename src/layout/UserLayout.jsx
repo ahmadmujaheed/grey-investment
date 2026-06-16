@@ -69,7 +69,7 @@ const UserLayout = () => {
       id: "investment",
       label: "Investments",
       icon: TrendingUp,
-      path: "/user-dashboard/investment", // Investor personal asset rosters
+      path: "/user-dashboard/user-investments", // Investor personal asset rosters
     },
     { 
       id: "profile", 

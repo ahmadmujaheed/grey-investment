@@ -22,6 +22,7 @@ const Profile = () => {
     bankName: NIGERIAN_BANKS[0].name,
     accountName: "",
     accountNumber: "",
+    source: "profit",
   });
   const [error, setError] = useState(null); 
 
@@ -80,19 +81,22 @@ const Profile = () => {
     }
   };
 
-  const handleWithdraw = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await requestWithdrawalApi(formData);
-      message.success("Withdrawal request submitted!");
-      setIsWithdrawOpen(false);
-    } catch (err) {
-      message.error("Withdrawal failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+ const handleWithdraw = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  try {
+    // Ensure 'source' is included
+    await requestWithdrawalApi({ ...formData, source: "profit" }); 
+    message.success("Withdrawal request submitted!");
+    setIsWithdrawOpen(false);
+  } catch (err) {
+    // The server is telling you exactly why it failed
+    console.error(err.response?.data); 
+    message.error(err.response?.data?.message || "Withdrawal failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (syncing)
     return (
