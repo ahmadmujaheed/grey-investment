@@ -45,7 +45,7 @@ const Requests = () => {
       <table className="w-full text-left border-collapse text-xs">
         <thead className="bg-[#090A0F]/30 text-slate-400 border-b border-slate-800">
           <tr>
-            {['Investor', 'Phone', 'Amount', 'Bank', 'Status', 'Actions'].map(h => 
+            {['Investor', 'Phone', 'Amount', 'Bank', 'Account Number', 'Status', 'Actions'].map(h => 
               <th key={h} className="p-4 uppercase tracking-wider font-semibold text-[11px]">{h}</th>
             )}
           </tr>
@@ -57,6 +57,7 @@ const Requests = () => {
               <td className="p-4">{req.user?.phone || "---"}</td>
               <td className="p-4 font-mono">₦{req.amount?.toLocaleString()}</td>
               <td className="p-4">{req.bankName}</td>
+              <td className="p-4">{req.accountNumber}</td>
               <td className="p-4">
                 <Tag color={req.status === 'approved' ? 'success' : req.status === 'rejected' ? 'error' : 'warning'}>
                   {req.status.toUpperCase()}

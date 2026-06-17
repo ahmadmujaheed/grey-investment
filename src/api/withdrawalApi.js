@@ -17,7 +17,7 @@ export const fetchUserWithdrawalHistory = async () => {
 // Admin: Get all requests
 export const fetchAllWithdrawalsApi = async () => {
   const response = await apiClient.get("/withdrawals/all");
-  console.log(response);
+  // console.log(response);
   return response.data;
 };
 
