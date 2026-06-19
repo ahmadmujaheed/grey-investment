@@ -6,7 +6,7 @@ import apiClient from "./apiClient";
  */
 export const fetchDashboardAnalytics = async () => {
   const response = await apiClient.get("/analytics/dashboard-summary");
-  console.log(response);
+  // console.log(response);
   return response.data;
 };
 
@@ -16,5 +16,6 @@ export const fetchDashboardAnalytics = async () => {
  */
 export const fetchInvestorAnalytics = async () => {
   const response = await apiClient.get("/analytics/my-summary");
+  // console.log(response)
   return response.data;
 };

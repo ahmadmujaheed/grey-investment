@@ -19,6 +19,7 @@ import Profile from "./pages/Profile";
 import UserDashboard from "./pages/investor/Dashboard";
 import UserSettings from "./pages/investor/Settings";
 import UserProfile from "./pages/investor/Profile";
+import UserInvestment from "./pages/investor/Investments"
 
 
 import ScrollToTop from "./components/ScrollToTop";
@@ -52,6 +53,7 @@ const App = () => {
       <Route element={<ProtectedRoute allowedRole="user" />}>
         <Route path="/user-dashboard" element={<UserLayout />}>
           <Route path="" element={<UserDashboard />} />
+          <Route path="user-investments" element={<UserInvestment />} />
           <Route path="user-settings" element={<UserSettings />} />
           <Route path="user-profile" element={<UserProfile />} />
         </Route>

@@ -11,7 +11,7 @@ import {
   Percent,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { Upload, message, Popconfirm, Skeleton, Select } from "antd";
+import { Upload, message, Popconfirm, Skeleton, Select, Tag } from "antd";
 import { HiOutlineArchiveBoxArrowDown } from "react-icons/hi2";
 import { IoCloseOutline } from "react-icons/io5";
 import { FaRegEdit } from "react-icons/fa";
@@ -28,6 +28,8 @@ import {
   restoreInvestmentPackage,
   removeUserFromPool,
   editInvestment,
+  updateInvestmentStatus,
+  
 } from "../api/investmentApi";
 
 const fadeInUp = {
@@ -101,6 +103,8 @@ const Investment = () => {
     }
   };
 
+  console.log(selectedPackage, "this is the investment");
+
   // Fetch all registered users to populate the allocation dropdown matrix
   const loadPlatformUsers = async () => {
     try {
@@ -143,39 +147,6 @@ const Investment = () => {
       return false;
     },
   };
-
-  // 2. CREATE: Deploys fresh package structure using form payload context mapping
-  // const handleCreateInvestment = async (e) => {
-  //   e.preventDefault();
-  //   if (!newName || !newAmount) return;
-
-  //   try {
-  //     setLoading(true);
-  //     const payloadFormData = new FormData();
-  //     payloadFormData.append("title", newName);
-  //     payloadFormData.append("targetAmount", newAmount);
-  //     if (rawUploadFile) {
-  //       payloadFormData.append("image", rawUploadFile);
-  //     }
-
-  //     await createInvestment(payloadFormData);
-  //     message.success("Investment package deployed successfully!");
-
-  //     setNewName("");
-  //     setNewAmount("");
-  //     setRawUploadFile(null);
-  //     setPreviewImageUrl("");
-  //     setIsCreateOpen(false);
-
-  //     await loadPlatformAssets(true);
-  //   } catch (error) {
-  //     message.error(
-  //       error.response?.data?.message || "Error creating package tier.",
-  //     );
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleSaveInvestment = async (e) => {
     e.preventDefault();
@@ -271,22 +242,6 @@ const Investment = () => {
     }
   };
 
-  // const getArchivedInvestments = async () => {
-  //   try {
-  //     setGettingArchived(true);
-  //     const data = await fetchArchivedInvestments();
-  //     // console.log("Archived Investments:", data);
-  //     setPackages(data);
-  //     // setSelectedPackage(data); // Clear any selected package to avoid mismatch with active list
-  //     // We set a state to track that we are viewing archived items
-  //     setInvestmentStatus("archived");
-  //   } catch (error) {
-  //     message.error("Failed to load archived investment packages.");
-  //   } finally {
-  //     setGettingArchived(false);
-  //   }
-  // };
-
   const getArchivedInvestments = async () => {
     try {
       setGettingArchived(true);
@@ -338,49 +293,74 @@ const Investment = () => {
     }
   };
 
- const removeInvestor = async (userId) => {
+  const removeInvestor = async (userId) => {
+    try {
+      setIsRemoving(true);
+
+      // 1. Perform the API call
+      await removeUserFromPool(selectedPackage._id, userId);
+      message.success("Investor removed successfully!");
+
+      // 2. Derive the new state locally immediately
+      // Filter the investor out from the current local array
+      const updatedInvestors = selectedPackage.investors.filter(
+        (inv) => inv.user._id !== userId,
+      );
+
+      // Calculate the new totalAmount based on the remaining investors
+      const newTotalAmount = updatedInvestors.reduce(
+        (sum, inv) => sum + (Number(inv.amount) || 0),
+        0,
+      );
+
+      // 3. Update the "selectedPackage" state
+      // This triggers an instant re-render of the modal/panel
+      setSelectedPackage((prev) => ({
+        ...prev,
+        investors: updatedInvestors,
+        totalAmount: newTotalAmount,
+      }));
+
+      // 4. Update the "packages" list (The main grid)
+      // This ensures the main dashboard reflects the change without a reload
+      setPackages((prev) =>
+        prev.map((p) =>
+          p._id === selectedPackage._id
+            ? { ...p, investors: updatedInvestors, totalAmount: newTotalAmount }
+            : p,
+        ),
+      );
+    } catch (error) {
+      message.error("Failed to remove investor.");
+      console.error(error);
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case "active": return "green";
+    case "pending": return "orange";
+    case "paused": return "volcano"; // A distinct red-orange for paused
+    case "completed": return "blue";
+    case "archived": return "default";
+    default: return "default";
+  }
+};
+
+  const handleStatusChange = async (newStatus) => {
   try {
-    setIsRemoving(true);
+    setLoading(true);
+    await updateInvestmentStatus(selectedPackage._id, newStatus);
+
+    setSelectedPackage((prev) => ({ ...prev, status: newStatus }));
     
-    // 1. Perform the API call
-    await removeUserFromPool(selectedPackage._id, userId);
-    message.success("Investor removed successfully!");
-
-    // 2. Derive the new state locally immediately
-    // Filter the investor out from the current local array
-    const updatedInvestors = selectedPackage.investors.filter(
-      (inv) => inv.user._id !== userId
-    );
-
-    // Calculate the new totalAmount based on the remaining investors
-    const newTotalAmount = updatedInvestors.reduce(
-      (sum, inv) => sum + (Number(inv.amount) || 0),
-      0
-    );
-
-    // 3. Update the "selectedPackage" state
-    // This triggers an instant re-render of the modal/panel
-    setSelectedPackage((prev) => ({
-      ...prev,
-      investors: updatedInvestors,
-      totalAmount: newTotalAmount,
-    }));
-
-    // 4. Update the "packages" list (The main grid)
-    // This ensures the main dashboard reflects the change without a reload
-    setPackages((prev) =>
-      prev.map((p) =>
-        p._id === selectedPackage._id
-          ? { ...p, investors: updatedInvestors, totalAmount: newTotalAmount }
-          : p
-      )
-    );
-
+    message.success(`Status set to ${newStatus}`);
   } catch (error) {
-    message.error("Failed to remove investor.");
-    console.error(error);
+    message.error("Status update failed");
   } finally {
-    setIsRemoving(false);
+    setLoading(false);
   }
 };
 
@@ -518,7 +498,7 @@ const Investment = () => {
 
                     <div className="p-4 space-y-3">
                       <div className="flex items-center justify-between gap-2">
-                        <h3 className="font-bold text-white text-base group-hover:text-[#34D399] transition-colors truncate">
+                        <h3 className="font-bold text-white text-base group-hover:text-[#34D399] transition-colors truncate capitalize">
                           {pkg.title}
                         </h3>
                         <span
@@ -643,7 +623,13 @@ const Investment = () => {
               {/* Left Column Ledger Layout Output */}
               <div className="lg:col-span-2 space-y-6">
                 <div className="border border-slate-800 bg-[#1F2937] rounded-none overflow-hidden">
-                  <div className="h-56 w-full bg-[#090A0F]">
+                  <div className="h-56 w-full bg-[#090A0F] relative">
+                    <Tag
+                      color={getStatusColor(selectedPackage.status)}
+                      className="absolute! top-2 right-2 px-3 py-1 font-semibold uppercase"
+                    >
+                      {selectedPackage.status}
+                    </Tag>
                     <img
                       src={
                         selectedPackage.image ||
@@ -654,14 +640,35 @@ const Investment = () => {
                     />
                   </div>
                   <div className="p-6 space-y-4">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#34D399] bg-[#090A0F] px-2 py-0.5 rounded-none border border-slate-800">
-                        Lifecycle Status Context Matrix:{" "}
-                        {selectedPackage.status}
-                      </span>
-                      <h2 className="text-2xl font-bold text-white mt-1">
-                        {selectedPackage.title}
-                      </h2>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        {/* <span className="text-[10px] font-bold uppercase tracking-wider text-[#34D399] bg-[#090A0F] px-2 py-0.5 rounded-none border border-slate-800">
+                          Lifecycle Status Context Matrix:{" "}
+                          {selectedPackage.status}
+                        </span> */}
+                        <h2 className="text-2xl font-bold text-white mt-1 capitalize">
+                          {selectedPackage.title}
+                        </h2>
+                      </div>
+                      {/* Dedicated Status Change Dropdown */}
+                      <Select
+                        value={selectedPackage.status} // Controlled by state
+                        onChange={(value) =>
+                          handleStatusChange(value, selectedPackage._id)
+                        }
+                        className="w-40"
+                        dropdownStyle={{ backgroundColor: "#090A0F" }}
+                        options={[
+                          "pending",
+                          "active",
+                          "paused",
+                          "completed",
+                        ].map((status) => ({
+                          value: status,
+                          label:
+                            status.charAt(0).toUpperCase() + status.slice(1),
+                        }))}
+                      />
                     </div>
 
                     <div className="grid grid-cols-3 gap-4 border-t border-slate-800 pt-4 text-xs font-semibold">

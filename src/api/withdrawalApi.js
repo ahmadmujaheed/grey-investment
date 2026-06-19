@@ -3,14 +3,13 @@ import apiClient from "./apiClient"; // Ensure this points to your configured ax
 // User: Request a withdrawal
 export const requestWithdrawalApi = async (data) => {
   const response = await apiClient.post("/withdrawals/request", data);
- 
   return response.data;
 };
 
 // User: Fetch personal withdrawal history
 export const fetchUserWithdrawalHistory = async () => {
   const response = await apiClient.get("/withdrawals/my-history");
-//    console.log(response);
+  //  console.log(response);
   return response.data;
 
 };
@@ -18,7 +17,7 @@ export const fetchUserWithdrawalHistory = async () => {
 // Admin: Get all requests
 export const fetchAllWithdrawalsApi = async () => {
   const response = await apiClient.get("/withdrawals/all");
-//   console.log(response);
+  // console.log(response);
   return response.data;
 };
 
