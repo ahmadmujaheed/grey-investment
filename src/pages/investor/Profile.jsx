@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Wallet, X } from "lucide-react"; // Added X icon
-import { message, Skeleton, Drawer, Table, Tag } from "antd";
+import { message, Skeleton, Drawer, Table, Tag, Popover, Button } from "antd";
 import { useAuthStore } from "../../store/useAuthStore";
 import {
   fetchUserWithdrawalHistory,
@@ -13,6 +13,11 @@ const Profile = () => {
   const { user, checkAuth } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(8);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false); // Restored
@@ -24,7 +29,7 @@ const Profile = () => {
     accountNumber: "",
     source: "profit",
   });
-  const [error, setError] = useState(null); 
+  const [error, setError] = useState(null);
 
   const [data, setData] = useState({
     summaryCards: { availableBalance: 0, totalCollected: 0 },
@@ -72,30 +77,40 @@ const Profile = () => {
   }, [checkAuth]);
 
   const loadHistory = async () => {
+    setLoadingHistory(true); // Start loader
     try {
       const data = await fetchUserWithdrawalHistory();
       setHistory(data);
-      setIsHistoryOpen(true); // Open the drawer
+      setIsHistoryOpen(true);
     } catch {
       message.error("Failed to load history");
+    } finally {
+      setLoadingHistory(false); // Stop loader
     }
   };
 
- const handleWithdraw = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  try {
-    // Ensure 'source' is included
-    await requestWithdrawalApi({ ...formData, source: "profit" }); 
-    message.success("Withdrawal request submitted!");
-    setIsWithdrawOpen(false);
-  } catch (err) {
-    // The server is telling you exactly why it failed
-    console.error(err.response?.data); 
-    message.error(err.response?.data?.message || "Withdrawal failed");
-  } finally {
-    setLoading(false);
-  }
+  const handleWithdraw = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      // Ensure 'source' is included
+      await requestWithdrawalApi({ ...formData, source: "profit" });
+      message.success("Withdrawal request submitted!");
+      setIsWithdrawOpen(false);
+    } catch (err) {
+      // The server is telling you exactly why it failed
+      console.error(err.response?.data);
+      message.error(err.response?.data?.message || "Withdrawal failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  
+
+const handleConfirm = async () => {
+  setPopoverOpen(false); // Close popover
+  await handleWithdraw(new Event("submit")); // Trigger your submit logic
 };
 
   if (syncing)
@@ -137,9 +152,10 @@ const Profile = () => {
         <div className="flex gap-4">
           <button
             onClick={loadHistory}
+            disabled={loadingHistory}
             className="px-6 py-2.5 bg-slate-800 text-white text-xs font-bold rounded-none hover:bg-slate-700 cursor-pointer"
           >
-            View History
+            {loadingHistory ? "Loading..." : "View History"}
           </button>
           <button
             onClick={() => setIsWithdrawOpen(true)}
@@ -152,29 +168,90 @@ const Profile = () => {
 
       {/* History Drawer */}
       <Drawer
-        title="Transaction History"
-        width={500}
+        title={
+          <span className="text-white uppercase tracking-wider font-bold">
+            Transaction History
+          </span>
+        }
+        width={1000}
         open={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
+        // This makes the close icon white
+        closeIcon={<X className="text-white" size={20} />}
+        styles={{
+          header: {
+            backgroundColor: "#090A0F",
+            borderBottom: "1px solid #1F2937",
+          },
+          body: { backgroundColor: "#090A0F", padding: "0" },
+        }}
       >
-        <Table
-          dataSource={history}
-          rowKey="_id"
-          columns={[
-            {
-              title: "Amount",
-              dataIndex: "amount",
-              render: (a) => `₦${a.toLocaleString()}`,
-            },
-            {
-              title: "Status",
-              dataIndex: "status",
-              render: (s) => (
-                <Tag color={s === "approved" ? "green" : "gold"}>{s}</Tag>
-              ),
-            },
-          ]}
-        />
+        {/* The rest of your table code remains the same */}
+        <div className="border-x border-b border-slate-800">
+          <div className="grid grid-cols-7 bg-[#1F2937] border-b border-slate-800 text-[#9CA3AF] text-xs font-bold uppercase tracking-wider">
+            {[
+              "Account Name",
+              "Bank",
+              "Account No.",
+              "Amount",
+              "From",
+              "Date/Time",
+              "Status",
+            ].map((h) => (
+              <div key={h} className="p-4">
+                {h}
+              </div>
+            ))}
+          </div>
+
+          <div className="divide-y divide-slate-800">
+            {history
+              .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+              .map((item) => (
+                <div
+                  key={item._id}
+                  className="grid grid-cols-7 p-3 items-center text-white text-xs"
+                >
+                  <div className="font-semibold capitalize">
+                    {item.accountName}
+                  </div>
+                  <div className="capitalize">{item.bankName}</div>
+                  <div>{item.accountNumber}</div>
+                  <div className="text-[#34D399]">
+                    ₦{item.amount.toLocaleString()}
+                  </div>
+                  <div className="capitalize">{item.source}</div>
+                  <div className="text-slate-400">
+                    {new Date(item.createdAt).toLocaleString()}
+                  </div>
+                  <div>
+                    <Tag color={item.status === "approved" ? "green" : "gold"}>
+                      {item.status.toUpperCase()}
+                    </Tag>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        {/* Simple Pagination Control */}
+        <div className="p-4 flex justify-end gap-2 text-white">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+            className="px-3 py-1 bg-slate-800 disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span className="px-3 py-1">{currentPage}</span>
+          <button
+            disabled={currentPage * pageSize >= history.length}
+            onClick={() => setCurrentPage((p) => p + 1)}
+            className="px-3 py-1 bg-slate-800 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
       </Drawer>
 
       {/* Withdrawal Modal */}
@@ -252,24 +329,46 @@ const Profile = () => {
                 }
               />
 
-              {/* Submit Button with conditional disabling */}
-              <button
-                type="submit"
-                disabled={
-                  loading ||
-                  formData.amount > availableBalance ||
-                  !formData.amount
-                }
-                className={`w-full py-3 font-bold transition-all ${
-                  loading ||
-                  formData.amount > availableBalance ||
-                  !formData.amount
-                    ? "bg-slate-700 text-slate-400 cursor-not-allowed"
-                    : "bg-[#34D399] text-[#090A0F] hover:bg-[#28b485]"
-                }`}
-              >
-                {loading ? "Processing..." : "Submit Request"}
-              </button>
+            <Popover
+  content={
+    <div className="p-2 space-y-3">
+      <p className="text-xs text-white">Are these account details correct?</p>
+      <div className="flex gap-2">
+        <Button 
+          size="small" 
+          onClick={() => setPopoverOpen(false)} 
+          disabled={isSubmitting} // Disable "No" while submitting
+        >
+          No
+        </Button>
+        <Button 
+          size="small" 
+          type="primary" 
+          className="bg-[#34D399] border-none text-[#090A0F]" 
+          loading={isSubmitting} // This triggers the Ant Design loader
+          onClick={async () => {
+            setIsSubmitting(true); // Start loader
+            await handleConfirm(); // Your existing logic
+            setIsSubmitting(false); // Stop loader (or it closes anyway on submit)
+          }}
+        >
+          Yes, Send
+        </Button>
+      </div>
+    </div>
+  }
+  title={<span className="text-xs">Confirm Details</span>}
+  trigger="click"
+  open={popoverOpen}
+  onOpenChange={(visible) => setPopoverOpen(visible)}
+>
+  <button
+    type="button"
+    className="w-full py-3 font-bold bg-[#34D399] text-[#090A0F] hover:bg-[#28b485] transition-all"
+  >
+    Submit Request
+  </button>
+</Popover>
             </form>
           </div>
         </div>

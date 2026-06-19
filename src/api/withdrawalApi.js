@@ -9,7 +9,7 @@ export const requestWithdrawalApi = async (data) => {
 // User: Fetch personal withdrawal history
 export const fetchUserWithdrawalHistory = async () => {
   const response = await apiClient.get("/withdrawals/my-history");
-//    console.log(response);
+  //  console.log(response);
   return response.data;
 
 };
