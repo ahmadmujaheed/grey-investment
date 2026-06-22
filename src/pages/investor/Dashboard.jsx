@@ -92,25 +92,26 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {[
           {
-            label: "Total Principal",
+            label: "Total Money Invested",
             val: summaryCards.totalPrincipal,
             icon: Wallet,
             color: "text-[#34D399]",
           },
+         
           {
-            label: "Available Balance",
+            label: "Profit",
+            val: summaryCards.totalYield,
+            icon: TrendingUp,
+            color: "text-emerald-400",
+          },
+           {
+            label: "withdrawable Balance",
             val: summaryCards.availableBalance,
             icon: Landmark,
             color:
               summaryCards.availableBalance < 0
                 ? "text-rose-400"
                 : "text-white",
-          },
-          {
-            label: "Total Yield",
-            val: summaryCards.totalYield,
-            icon: TrendingUp,
-            color: "text-emerald-400",
           },
           {
             label: "Total Collected",

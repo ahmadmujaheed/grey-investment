@@ -68,7 +68,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF] p-6">
+    <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF]">
       
       {/* Page Title Header */}
       <div className="border-b border-slate-800 pb-5">

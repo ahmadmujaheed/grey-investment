@@ -8,6 +8,11 @@ import { NIGERIAN_BANKS } from "../../utils/bank";
 
 const Investments = () => {
   const [investments, setInvestments] = useState([]);
+  const [investmentsummary, setInvestmentsummary] = useState({ 
+  totalPrincipal: 0, 
+  totalYield: 0, 
+  activePoolsCount: 0 
+});
   const [loading, setLoading] = useState(true);
 
   // Withdrawal/Management States
@@ -27,6 +32,13 @@ const Investments = () => {
         setLoading(true);
         const res = await fetchUserInvestments();
         setInvestments(res.data || []);
+        setInvestmentsummary(
+  res.summary || {
+    totalPrincipal: 0,
+    totalYield: 0,
+    activePoolsCount: 0,
+  }
+);
       } catch (err) {
         message.error("Could not load investment data.");
       } finally {
@@ -35,6 +47,8 @@ const Investments = () => {
     };
     loadInvestments();
   }, []);
+
+  // console.log(investmentsummary)
 
   // Update handleWithdraw
 //   const handleWithdraw = async (e) => {
@@ -103,14 +117,18 @@ const handleWithdraw = async (e) => {
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <StatCard
-          title="Total Principal"
-          value="₦1,250,000"
+          title="Total Money Invested"
+          value={`₦${investmentsummary.totalPrincipal.toLocaleString()}`}
           icon={<Wallet />}
         />
-        <StatCard title="Total Yield" value="₦305,000" icon={<TrendingUp />} />
+        <StatCard
+          title="Profit"
+          value={`₦${investmentsummary.totalYield.toLocaleString()}`}
+          icon={<TrendingUp />}
+        />
         <StatCard
           title="Active Pools"
-          value={investments.length}
+          value={investmentsummary.activePoolsCount}
           icon={<ShieldCheck />}
         />
       </div>

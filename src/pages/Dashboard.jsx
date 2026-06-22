@@ -124,7 +124,7 @@ const Dashboard = () => {
   // 💀 Skeleton Loader View (Perfect Dark Theme Matching)
   if (loading) {
     return (
-      <div className="space-y-6 bg-[#1F1F1F] min-h-screen p-4">
+      <div className="space-y-6 bg-[#1F1F1F] min-h-screen">
         {/* Header Skeleton */}
         <div className="space-y-2">
           <Skeleton.Button
@@ -208,7 +208,7 @@ const Dashboard = () => {
       initial="hidden"
       animate="visible"
       variants={staggerContainer}
-      className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF] p-4"
+      className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF]"
     >
       {/* Title Header */}
       <motion.div variants={fadeInUp}>
