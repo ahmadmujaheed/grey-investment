@@ -8,7 +8,7 @@ import { updateUserPassword } from "../../api/authApi";
 
 const Settings = () => {
   // 🔌 Pull 'user' state and your store mutation actions
-  const { user, checkAuth, setUser } = useAuthStore(); 
+  const { user, checkAuth, setUser, logout } = useAuthStore(); 
   const navigate = useNavigate(); 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -50,19 +50,10 @@ const Settings = () => {
       message.success("Password updated successfully!");
       setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" });
       
-      // ✅ 1. Manually update Zustand state + sessionStorage immediately to kill the redirect loop
-      if (setUser) {
-        setUser({ ...user, isInitialPassword: false });
-      } else {
-        // Fallback if your store action uses a direct method name (e.g., useAuthStore.setState)
-        useAuthStore.setState({ user: { ...user, isInitialPassword: false } });
+      if (logout) {
+        await logout();
       }
-
-      // 2. Refresh server authorization metadata in background context safely
-      if (checkAuth) await checkAuth();
-
-      // 🎉 3. Run safe workspace deployment redirects
-      navigate("/user-dashboard", { replace: true });
+      navigate("/", { replace: true });
       
     } catch (err) {
       console.error("Password update error:", err);

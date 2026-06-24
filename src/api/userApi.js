@@ -32,6 +32,7 @@ export const updateUserPassword = async (passwordPayload) => {
 // Inside ../api/userApi.js
 export const resetUserPassword = async (userId) => {
   // Ensure this matches the route defined in your authRoutes.js
-  const response = await apiClient.patch(`/auth/reset-password/${userId}`);
+  const response = await apiClient.put(`/auth/reset-password/${userId}`);
+  console.log(response)
   return response.data;
 };
