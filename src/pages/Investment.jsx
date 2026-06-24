@@ -29,7 +29,6 @@ import {
   removeUserFromPool,
   editInvestment,
   updateInvestmentStatus,
-  
 } from "../api/investmentApi";
 
 const fadeInUp = {
@@ -76,8 +75,11 @@ const Investment = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  const [companyPercent, setCompanyPercent] = useState(""); // Defaulting to your example
+  const [companyPercent, setCompanyPercent] = useState("");
   const [investorPercent, setInvestorPercent] = useState("");
+
+  const [selectedSource, setSelectedSource] = useState("capital");
+  const [availableProfit, setAvailableProfit] = useState(0);
 
   const openEditModal = (pkg) => {
     setNewName(pkg.title);
@@ -117,6 +119,16 @@ const Investment = () => {
       setUsersLoading(false);
     }
   };
+
+  const handleUserSelect = async (userId) => {
+    setTargetUserId(userId);
+    if (userId) {
+      const data = await fetchUserProfit(userId);
+      setAvailableProfit(data.totalProfit);
+    }
+  };
+
+  console.log(users);
 
   useEffect(() => {
     loadPlatformAssets(true);
@@ -203,40 +215,204 @@ const Investment = () => {
   };
 
   // 4. LINK ALLOCATION: Binds structural capital allocation values to user profiles
-  const handleAddInvestor = async (e) => {
+  // const handleAddInvestor = async (e) => {
+  //   e.preventDefault();
+  //   setAllocate(true);
+  //   if (!targetUserId || !newInvestorAmount) {
+  //     message.error(
+  //       "Please pick a target platform member and set an injection amount.",
+  //     );
+  //     return;
+  //   }
+
+  //   try {
+  //     // ⚡ Optimistic Local Update: Don't flip the root loading skeleton back on
+  //     const data = await allocateInvestorToPool(selectedPackage._id, {
+  //       user: targetUserId,
+  //       amount: newInvestorAmount,
+  //     });
+
+  //     message.success("Investor allocation bound to pool roster successfully!");
+
+  //     // Update inline workspace state directly using populated data from payload response
+  //     setSelectedPackage(data.package);
+
+  //     // Synced update to background packages matrix without resetting views
+  //     setPackages((prev) =>
+  //       prev.map((p) => (p._id === data.package._id ? data.package : p)),
+  //     );
+
+  //     setTargetUserId(undefined);
+  //     setNewInvestorAmount("");
+  //   } catch (error) {
+  //     message.error(
+  //       error.response?.data?.message ||
+  //         "Error assigning stakeholder parameters to pool instance.",
+  //     );
+  //   } finally {
+  //     setAllocate(false);
+  //   }
+  // };
+
+  // const handleAddInvestor = async (e) => {
+  //   e.preventDefault();
+  //   if (selectedSource === "profit" && newInvestorAmount > availableProfit) {
+  //     return message.error("Insufficient profit available.");
+  //   }
+
+  //   setAllocate(true);
+  //   try {
+  //     await allocateInvestorToPool(selectedPackage._id, {
+  //       userId: targetUserId,
+  //       amount: newInvestorAmount,
+  //       isReinvestment: selectedSource === "profit",
+  //     });
+  //     message.success("Allocation successful!");
+  //   } catch (err) {
+  //     message.error("Allocation failed.");
+  //   } finally {
+  //     setAllocate(false);
+  //   }
+  // };
+  
+//   const handleAddInvestor = async (e) => {
+//   e.preventDefault();
+  
+//   const payload = {
+//     userId: targetUserId, // Ensure this key matches your Backend
+//     amount: parseFloat(newInvestorAmount),
+//     isReinvestment: selectedSource === "profit",
+//   };
+
+//   console.log("DEBUG: Frontend Payload sending to server:", payload);
+  
+//   setAllocate(true);
+//   try {
+//     const result = await allocateInvestorToPool(selectedPackage._id, payload);
+//     console.log("DEBUG: Server Response:", result);
+//     message.success("Allocation successful!");
+//   } catch (err) {
+//     console.error("DEBUG: Frontend Error Response:", err.response?.data);
+//     message.error(err.response?.data?.message || "Allocation failed.");
+//   } finally {
+//     setAllocate(false);
+//   }
+// };
+
+// const handleAddInvestor = async (e) => {
+//     e.preventDefault();
+    
+//     const payload = {
+//       userId: targetUserId,
+//       amount: parseFloat(newInvestorAmount),
+//       isReinvestment: selectedSource === "profit",
+//     };
+
+//     setAllocate(true);
+//     try {
+//       await allocateInvestorToPool(selectedPackage._id, payload);
+//       message.success("Allocation successful!");
+
+//       // 1. CLEAR FORM FIELDS
+//       setTargetUserId(undefined);
+//       setNewInvestorAmount("");
+      
+//       // 2. REFRESH DATA WITHOUT RELOAD
+//       // This re-fetches the list of investments and updates the local state
+//       await loadPlatformAssets(); 
+      
+//       // 3. UPDATE THE SELECTED PACKAGE VIEW
+//       // Since we just fetched the list, let's find the updated version of our current package
+//       const updatedPackage = await fetchAllInvestments(); // Or fetch just this one if your API supports it
+//       const currentPkg = updatedPackage.find(p => p._id === selectedPackage._id);
+//       setSelectedPackage(currentPkg);
+
+//     } catch (err) {
+//       console.error("Allocation failed:", err);
+//       message.error(err.response?.data?.message || "Allocation failed.");
+//     } finally {
+//       setAllocate(false);
+//     }
+//   };
+
+// const handleAddInvestor = async (e) => {
+//   e.preventDefault();
+  
+//   const payload = {
+//     userId: targetUserId,
+//     amount: parseFloat(newInvestorAmount),
+//     isReinvestment: selectedSource === "profit",
+//   };
+  
+//   setAllocate(true);
+//   try {
+//     const result = await allocateInvestorToPool(selectedPackage._id, payload);
+    
+//     // 1. SUCCESS: Update the UI with the latest data from the server response
+//     // result.package contains the updated totalAmount and the new investor list
+//     setSelectedPackage(result.package); 
+    
+//     // 2. CLEAR FORM FIELDS
+//     setTargetUserId(undefined);
+//     setNewInvestorAmount("");
+    
+//     // 3. RESET SOURCE TOGGLE TO DEFAULT
+//     setSelectedSource("capital"); 
+    
+//     message.success("Allocation successful!");
+//   } catch (err) {
+//     console.error("Allocation failed:", err);
+//     message.error(err.response?.data?.message || "Allocation failed.");
+//   } finally {
+//     setAllocate(false);
+//   }
+// };
+
+
+const handleAddInvestor = async (e) => {
     e.preventDefault();
+    
+    const payload = {
+      userId: targetUserId,
+      amount: parseFloat(newInvestorAmount),
+      isReinvestment: selectedSource === "profit",
+    };
+
     setAllocate(true);
-    if (!targetUserId || !newInvestorAmount) {
-      message.error(
-        "Please pick a target platform member and set an injection amount.",
-      );
-      return;
-    }
-
     try {
-      // ⚡ Optimistic Local Update: Don't flip the root loading skeleton back on
-      const data = await allocateInvestorToPool(selectedPackage._id, {
-        user: targetUserId,
-        amount: newInvestorAmount,
-      });
+      const result = await allocateInvestorToPool(selectedPackage._id, payload);
+      
+      // 1. Get the full user object from your local 'users' registry
+      const userData = users.find(u => u.id === targetUserId);
 
-      message.success("Investor allocation bound to pool roster successfully!");
+      // 2. Create the populated investor object
+      const newInvestor = {
+        user: {
+          _id: targetUserId,
+          name: userData?.name || "Unknown",
+          email: userData?.email || "No email"
+        },
+        amount: parseFloat(newInvestorAmount),
+        profitCollected: 0 // Default value
+      };
 
-      // Update inline workspace state directly using populated data from payload response
-      setSelectedPackage(data.package);
+      // 3. Manually update the state to include the populated object
+      setSelectedPackage(prev => ({
+        ...prev,
+        ...result.package, // Take the updated totalAmount/etc from server
+        investors: [...prev.investors, newInvestor] // Add our populated object
+      }));
 
-      // Synced update to background packages matrix without resetting views
-      setPackages((prev) =>
-        prev.map((p) => (p._id === data.package._id ? data.package : p)),
-      );
-
+      message.success("Allocation successful!");
+      
+      // Reset form
       setTargetUserId(undefined);
       setNewInvestorAmount("");
-    } catch (error) {
-      message.error(
-        error.response?.data?.message ||
-          "Error assigning stakeholder parameters to pool instance.",
-      );
+      setSelectedSource("capital");
+      
+    } catch (err) {
+      console.error("Allocation failed:", err);
+      message.error(err.response?.data?.message || "Allocation failed.");
     } finally {
       setAllocate(false);
     }
@@ -338,31 +514,37 @@ const Investment = () => {
     }
   };
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case "active": return "green";
-    case "pending": return "orange";
-    case "paused": return "volcano"; // A distinct red-orange for paused
-    case "completed": return "blue";
-    case "archived": return "default";
-    default: return "default";
-  }
-};
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "active":
+        return "green";
+      case "pending":
+        return "orange";
+      case "paused":
+        return "volcano"; // A distinct red-orange for paused
+      case "completed":
+        return "blue";
+      case "archived":
+        return "default";
+      default:
+        return "default";
+    }
+  };
 
   const handleStatusChange = async (newStatus) => {
-  try {
-    setLoading(true);
-    await updateInvestmentStatus(selectedPackage._id, newStatus);
+    try {
+      setLoading(true);
+      await updateInvestmentStatus(selectedPackage._id, newStatus);
 
-    setSelectedPackage((prev) => ({ ...prev, status: newStatus }));
-    
-    message.success(`Status set to ${newStatus}`);
-  } catch (error) {
-    message.error("Status update failed");
-  } finally {
-    setLoading(false);
-  }
-};
+      setSelectedPackage((prev) => ({ ...prev, status: newStatus }));
+
+      message.success(`Status set to ${newStatus}`);
+    } catch (error) {
+      message.error("Status update failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // console.log(selectedPackage);
 
@@ -652,7 +834,7 @@ const getStatusColor = (status) => {
                       </div>
                       {/* Dedicated Status Change Dropdown */}
                       <Select
-                      disabled={selectedPackage.status === "completed"}
+                        disabled={selectedPackage.status === "completed"}
                         value={selectedPackage.status} // Controlled by state
                         onChange={(value) =>
                           handleStatusChange(value, selectedPackage._id)
@@ -946,84 +1128,102 @@ const getStatusColor = (status) => {
                     <UserPlus size={18} className="text-[#34D399]" />
                     <h3 className="font-bold text-base">Add User to Pool</h3>
                   </div>
+
                   <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                    Allocate collected capital holdings into this active
-                    platform asset pool. Choose a target platform user registry
-                    entry.
+                    Allocate capital or reinvest user profit into this active
+                    asset pool.
                   </p>
 
                   <form
                     onSubmit={handleAddInvestor}
                     className="space-y-4 text-xs"
                   >
+                    {/* 1. Select Member */}
                     <div className="space-y-1.5">
                       <label className="font-bold text-[#9CA3AF] block">
                         Select Platform Member
                       </label>
-
-                      {/* 🌟 Ant Design Select with full Tailwind styles and targeted token overrides */}
                       <Select
                         showSearch
                         loading={usersLoading}
-                        placeholder="Search by name or email context..."
+                        placeholder="Search by name or email..."
                         optionFilterProp="label"
                         value={targetUserId}
-                        onChange={(value) => setTargetUserId(value)}
-                        disabled={
-                          selectedPackage.status === "completed" ||
-                          selectedPackage.status === "archived"
-                        }
+                        onChange={(value) => {
+                          setTargetUserId(value);
+                          // Use the correct property 'totalProfit' instead of 'profitCollected'
+                          const user = users.find((u) => u.id === value);
+                          setAvailableProfit(user?.totalProfit || 0); // Corrected here
+                        }}
                         className="w-full h-9 rounded-none"
-                        dropdownStyle={{
-                          backgroundColor: "#090A0F",
-                          border: "1px solid #1E293B",
-                        }}
-                        styles={{
-                          control: (base) => ({
-                            ...base,
-                            backgroundColor: "#090A0F",
-                            borderColor: "#1E293B",
-                            borderRadius: "0px",
-                            color: "#FFFFFF",
-                          }),
-                        }}
-                        /* 👇 FIX: Swapped user._id to user.id to match your backend formatted payload structural outputs */
                         options={users.map((user) => ({
                           value: user.id,
-                          label: `${user.name || "Unnamed User"} (${user.email || "No email"})`,
+                          label: `${user.name || "Unnamed"} (${user.email || "No email"})`,
                         }))}
                       />
                     </div>
 
+                    {/* 2. Source Toggle */}
+                    <div className="grid grid-cols-2 gap-1 bg-[#090A0F] p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSource("capital")}
+                        className={`py-1.5 text-[10px] font-bold transition-all ${selectedSource === "capital" ? "bg-slate-800 text-white" : "text-[#9CA3AF]"}`}
+                      >
+                        FRESH CAPITAL
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSource("profit")}
+                        className={`py-1.5 text-[10px] font-bold transition-all ${selectedSource === "profit" ? "bg-[#34D399] text-[#090A0F]" : "text-[#9CA3AF]"}`}
+                      >
+                        FROM PROFIT
+                      </button>
+                    </div>
+
+                    {/* 3. Dynamic Profit Display */}
+                    {selectedSource === "profit" && (
+                      <div className="flex justify-between items-center px-3 py-2 bg-[#090A0F] border border-[#34D399]/20">
+                        <span className="text-[10px] text-[#9CA3AF] uppercase">
+                          Available to Reinvest
+                        </span>
+                        <span className="text-sm font-mono font-bold text-[#34D399]">
+                          ₦{availableProfit.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 4. Amount Input */}
                     <div className="space-y-1.5">
                       <label className="font-bold text-[#9CA3AF] block">
-                        Injected Capital Holding (₦)
+                        {selectedSource === "profit"
+                          ? "Amount to Reinvest (₦)"
+                          : "Injected Capital (₦)"}
                       </label>
                       <input
                         type="number"
                         required
                         value={newInvestorAmount}
-                        disabled={
-                          selectedPackage.status === "completed" ||
-                          selectedPackage.status === "archived"
-                        }
                         onChange={(e) => setNewInvestorAmount(e.target.value)}
-                        placeholder="e.g. 500000"
-                        className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6] transition-all disabled:opacity-40"
+                        placeholder={
+                          selectedSource === "profit"
+                            ? `Max ₦${availableProfit}`
+                            : "e.g. 500000"
+                        }
+                        className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#34D399] transition-all"
                       />
                     </div>
 
                     <button
                       type="submit"
                       disabled={
+                        allocate ||
                         selectedPackage.status === "completed" ||
                         selectedPackage.status === "archived"
                       }
-                      className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer"
+                      className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2"
                     >
-                      {allocate
-                        ? "Allocating to Pool..."
-                        : "Confirm Allocation"}
+                      {allocate ? "Allocating..." : "Confirm Allocation"}
                     </button>
                   </form>
                 </div>
