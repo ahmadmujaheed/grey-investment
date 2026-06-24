@@ -23,9 +23,11 @@ import { motion, AnimatePresence } from "motion/react";
 import { message } from "antd";
 import {
   fetchAllUsers,
+  fetchUserById,
   provisionNewUser,
   resetUserPassword,
 } from "../api/userApi";
+import { adminSetWithdrawalAmount } from "../api/withdrawalApi";
 
 const fadeInUpRow = {
   hidden: { opacity: 0, y: 8 },
@@ -86,6 +88,10 @@ const Users = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [limits, setLimits] = useState({});
+  const [limitLoading, setLimitLoading] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [selectedInvestment, setSelectedInvestment] = useState(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const userIdFromUrl = searchParams.get("id");
@@ -125,8 +131,6 @@ const Users = () => {
     loadUsersData();
   }, []);
 
-  // console.log(selectedUser, "this is the user");
-
   // Sync state view node with browser routing deep-link indicators
   useEffect(() => {
     if (userIdFromUrl && users.length > 0) {
@@ -139,13 +143,76 @@ const Users = () => {
     }
   }, [userIdFromUrl, users]);
 
-  const handleSelectUser = (user) => {
+  // const handleSelectUser = (user) => {
+  //   if (user) {
+  //     setSearchParams({ id: user.id || user._id });
+  //   } else {
+  //     setSearchParams({});
+  //   }
+  // };
+
+  // Change this function in Users.jsx
+  // const handleSelectUser = async (user) => {
+  //   if (user) {
+  //     try {
+  //       // 1. Fetch the full, fresh data from the server
+  //       const fullUser = await fetchUserById(user.id || user._id);
+
+  //       console.log("this is the full user", fullUser)
+
+  //       // 2. Set the complete profile in state
+  //       setSelectedUser(fullUser);
+  //       // 3. Update the URL
+  //       setSearchParams({ id: user.id || user._id });
+  //     } catch (error) {
+  //       message.error("Failed to fetch full user details.");
+  //     }
+  //   } else {
+  //     setSelectedUser(null);
+  //     setSearchParams({});
+  //   }
+  // };
+
+  const handleSelectUser = async (user) => {
     if (user) {
-      setSearchParams({ id: user.id || user._id });
+      try {
+        const fullUser = await fetchUserById(user.id || user._id);
+
+        // FORCE a new object reference using the spread operator
+        // This guarantees React detects the change and re-renders
+        setSelectedUser({ ...fullUser });
+        console.log("Rendering Component with:", fullUser);
+
+        setSearchParams({ id: user.id || user._id });
+      } catch (error) {
+        message.error("Failed to fetch full user details.");
+      }
     } else {
+      setSelectedUser(null);
       setSearchParams({});
     }
   };
+
+  useEffect(() => {
+    const loadUser = async () => {
+      if (!userIdFromUrl) {
+        setSelectedUser(null);
+        return;
+      }
+
+      try {
+        const fullUser = await fetchUserById(userIdFromUrl);
+        setSelectedUser(fullUser);
+      } catch (err) {
+        message.error("Failed to load user.");
+      }
+    };
+
+    loadUser();
+  }, [userIdFromUrl]);
+
+  // Debugging line
+  // console.log("Rendering Component with:", selectedUser?.withdrawableLimit);
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -227,8 +294,56 @@ const Users = () => {
     0,
   );
 
+  // console.log("this is the investment", selectedInvestment)
+  // const handleLimitUpdate = async (userId, limits) => {
+  //   try {
+  //     const payload = {
+  //       userId,
+  //       withdrawableLimit: Number(limits),
+  //     };
+  //     console.log("payload", payload);
+  //     await adminSetWithdrawalAmount(payload);
+  //     message.success("Withdrawable limit updated!");
+  //     setIsLimitModalOpen(false);
+  //   } catch (err) {
+  //     message.error("Failed to update limit.");
+  //   }
+  // };
+
+  const handleLimitUpdate = async (userId, amount) => {
+    setLimitLoading(true);
+    try {
+      const payload = {
+        userId: userId,
+        amountToAdd: amount,
+      };
+
+      // 1. Call API
+      const result = await adminSetWithdrawalAmount(payload);
+      const newTotalLimit = result.newTotalLimit;
+
+      // 2. Single, atomic state update
+      setSelectedUser((prev) => ({
+        ...prev,
+        withdrawableLimit: newTotalLimit,
+        // Calculate remainingBalance safely using the fresh result
+        remainingBalance: newTotalLimit - (prev.totalCollected || 0),
+      }));
+
+      // 3. Close the modal and notify
+      setIsLimitModalOpen(false);
+      message.success(
+        `Limit updated! New total: ₦${newTotalLimit.toLocaleString()}`,
+      );
+    } catch (error) {
+      message.error("Failed to update limit.");
+    } finally {
+      setLimitLoading(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF] p-6">
+    <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF]">
       <AnimatePresence mode="wait">
         {!selectedUser ? (
           /* VIEW 1: MASTER LIST ROSTER DIRECTORY */
@@ -450,16 +565,23 @@ const Users = () => {
                 <button className="flex items-center gap-1 px-2.5 py-1 border border-slate-800 text-[11px] font-bold hover:bg-[#1F2937] transition-colors text-[#9CA3AF] cursor-pointer">
                   <Download size={12} /> Audit Trail
                 </button>
-                <Popconfirm
-                  title="Reset this user's password to 'investment'?"
-                  onConfirm={() => handleResetPassword(selectedUser?.id)}
-                  okText="Reset"
-                  cancelText="Cancel"
-                >
-                  <button className="flex items-center gap-1 px-2.5 py-1 border border-slate-800 text-[11px] font-bold hover:bg-[#1F2937] transition-colors text-white cursor-pointer">
-                    Reset User Password
-                  </button>
-                </Popconfirm>
+               <Popconfirm
+  title="Reset this user's password to 'investment'?"
+  onConfirm={() => handleResetPassword(selectedUser?.id)}
+  okText="Reset"
+  cancelText="Cancel"
+>
+  <button className="flex items-center gap-1 px-2.5 py-1 bg-red-900/20 border border-red-500/50 text-[11px] font-bold text-red-400 hover:bg-red-900/40 transition-colors cursor-pointer">
+    Reset User Password
+  </button>
+</Popconfirm>
+
+<button
+  onClick={() => setIsLimitModalOpen(true)}
+  className="flex items-center gap-1 px-2.5 py-1 bg-[#34D399]/10 border border-[#34D399]/30 text-[11px] font-bold text-[#34D399] hover:bg-[#34D399]/20 transition-colors cursor-pointer"
+>
+  Set Withdrawable Amount
+</button>
               </div>
             </div>
 
@@ -493,21 +615,11 @@ const Users = () => {
             </div>
 
             {/* Streamlined Core Figures Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
                 <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <ArrowDownLeft size={12} className="text-[#3B82F6]" /> Inbound
-                  Capital (Sent In)
-                </span>
-                <div className="text-xl font-extrabold text-white font-mono">
-                  ₦{(selectedUser.totalInbound || 0).toLocaleString()}
-                </div>
-              </div>
-
-              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
-                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <Briefcase size={12} className="text-amber-500" /> Placed
-                  Principal (Invested)
+                  <Briefcase size={12} className="text-amber-500" /> Total Money
+                  Invested
                 </span>
                 <div className="text-xl font-extrabold text-amber-500 font-mono">
                   ₦{(selectedUser.totalInvested || 0).toLocaleString()}
@@ -516,11 +628,54 @@ const Users = () => {
 
               <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
                 <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <Coins size={12} className="text-[#34D399]" /> Accumulated
-                  Yield (Profit)
+                  <Coins size={12} className="text-[#34D399]" />
+                  Profit
                 </span>
-                <div className="text-xl font-extrabold text-[#34D399] font-mono">
+                <div className="text-xl font-extrabold text-green-400 font-mono">
                   ₦{(selectedUser.totalProfit || 0).toLocaleString()}
+                </div>
+              </div>
+
+              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
+                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <ArrowDownLeft size={12} className="text-[#3B82F6]" /> Capital
+                  + Profit
+                </span>
+                <div className="text-xl font-extrabold text-white font-mono">
+                  ₦
+                  {(
+                    Number(selectedUser.totalInvested) +
+                    Number(selectedUser.totalProfit)
+                  ).toLocaleString()}
+                </div>
+              </div>
+
+              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
+                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <ArrowDownLeft size={12} className="text-[#3B82F6]" />{" "}
+                  Withdrawable Amount
+                </span>
+                <div className="text-xl font-extrabold text-white font-mono">
+                  ₦{(selectedUser?.withdrawableLimit || 0).toLocaleString()}
+                </div>
+              </div>
+
+              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
+                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <ArrowDownLeft size={12} className="text-[#3B82F6]" />{" "}
+                  Withdrawable Balance
+                </span>
+                <div className="text-xl font-extrabold text-green-400 font-mono">
+                  ₦{(selectedUser?.remainingBalance || 0).toLocaleString()}
+                </div>
+              </div>
+              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
+                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                  <ArrowDownLeft size={12} className="text-[#3B82F6]" /> Total
+                  Amount Collected
+                </span>
+                <div className="text-xl font-extrabold text-red-400 font-mono">
+                  ₦{(selectedUser?.totalCollected || 0).toLocaleString()}
                 </div>
               </div>
             </div>
@@ -528,56 +683,66 @@ const Users = () => {
             {/* UNIFIED ADMINISTRATIVE DATA GRID */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Box 1: Placed Investment Allocations */}
-              <div className="border border-slate-800 bg-[#1F2937] p-4 space-y-3">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                    Active Investment Placements
-                  </h4>
-                  <p className="text-[11px] text-[#9CA3AF]">
-                    Capital actively assigned to operational pool positions.
-                  </p>
-                </div>
-                {!selectedUser.investmentsList ||
-                selectedUser.investmentsList.length === 0 ? (
-                  <p className="text-xs text-[#9CA3AF] italic bg-[#090A0F] p-3 text-center border border-slate-800">
-                    No current asset placements found.
-                  </p>
-                ) : (
-                  <div className="border border-slate-800 overflow-hidden bg-[#090A0F]">
-                    <table className="w-full text-left border-collapse text-[11px]">
-                      <thead>
-                        <tr className="bg-[#1F2937] border-b border-slate-800 font-bold text-[#9CA3AF]">
-                          <th className="p-2">Asset Pool Class</th>
-                          <th className="p-2 text-right">Committed</th>
-                          <th className="p-2 text-right">Profit</th>
-                          <th className="p-2 text-right">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
-                        {selectedUser.investmentsList.map((inv, idx) => (
-                          <tr
-                            key={inv.reference || idx}
-                            className="hover:bg-[#1F2937]/40"
-                          >
-                            <td className="p-2 font-bold capitalize text-white">
-                              {inv.poolName}
-                            </td>
-                            <td className="p-2 text-right font-mono text-white">
-                              ₦{inv.amount.toLocaleString()}
-                            </td>
-                            <td className="p-2 text-right font-mono text-[#34D399] font-bold">
-                              ₦{inv.yieldEarned.toLocaleString()}
-                            </td>
-                            <td className="p-2 text-right font-mono text-[#34D399] font-bold">
-                              ₦{(inv.amount + inv.yieldEarned).toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <div className="border border-slate-800 overflow-hidden bg-[#090A0F]">
+                <table className="w-full text-left border-collapse text-[11px]">
+                  <thead>
+                    <tr className="bg-[#1F2937] border-b border-slate-800 font-bold text-[#9CA3AF]">
+                      <th className="p-2">Asset Pool Class</th>
+                      <th className="p-2 text-right">Committed</th>
+                      <th className="p-2 text-right">Profit</th>
+                      <th className="p-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
+                    {selectedUser.investmentsList.map((inv, id) => (
+                      <tr key={inv._id} className="hover:bg-[#1F2937]/40">
+                        <td className="p-2 font-bold capitalize text-white">
+                          {inv.poolName}
+                        </td>
+                        <td className="p-2 text-right font-mono text-white">
+                          ₦{inv.amount.toLocaleString()}
+                        </td>
+                        <td className="p-2 text-right font-mono text-[#34D399] font-bold">
+                          ₦{inv.yieldEarned.toLocaleString()}
+                        </td>
+                        <td className="p-2 text-right font-mono text-[#34D399] font-bold">
+                          ₦{(inv.amount + inv.yieldEarned).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+
+              {isLimitModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                  <div className="bg-[#1F2937] border border-slate-800 p-6 w-80 text-white">
+                    <h3 className="font-bold mb-4">Set Withdrawable Amount</h3>
+                    <input
+                      type="number"
+                      placeholder="Enter amount"
+                      className="w-full p-2 bg-[#090A0F] border border-slate-800 mb-4"
+                      onChange={(e) => setLimits(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setIsLimitModalOpen(false)}
+                        className="px-4 py-2 bg-slate-700"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleLimitUpdate(selectedUser.id, limits)
+                        }
+                        className="px-4 py-2 bg-[#34D399] text-[#090A0F] font-bold"
+                      >
+                        {limitLoading ? "Please wait..." : "Update"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Box 2: Inbound Capital Flow Logs */}
               <div className="border border-slate-800 bg-[#1F2937] p-4 space-y-3">

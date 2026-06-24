@@ -332,7 +332,7 @@ const handleConfirm = async () => {
             <Popover
   content={
     <div className="p-2 space-y-3">
-      <p className="text-xs text-white">Are these account details correct?</p>
+      <p className="text-xs">Are these account details correct?</p>
       <div className="flex gap-2">
         <Button 
           size="small" 

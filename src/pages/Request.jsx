@@ -83,7 +83,7 @@ const Requests = () => {
   );
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto p-1 text-slate-200">
+    <div className="space-y-6 max-w-7xl mx-auto text-slate-200">
       {/* Metric Cards */}
       <div className="grid grid-cols-4 gap-5">
         {[ { label: 'Total', val: stats.total }, { label: 'Pending', val: stats.pending }, 

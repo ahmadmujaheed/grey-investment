@@ -21,6 +21,14 @@ export const fetchAllWithdrawalsApi = async () => {
   return response.data;
 };
 
+// In api/withdrawalApi.js
+export const adminSetWithdrawalAmount = async (payload) => {
+  const response = await apiClient.post("/withdrawals/update-limit", payload);
+  // console.log("Response from server:", response);
+  return response.data;
+};
+
+
 // Admin: Approve/Reject
 export const approveWithdrawalApi = (id) => apiClient.patch(`/withdrawals/approve/${id}`);
 export const rejectWithdrawalApi = (id) => apiClient.patch(`/withdrawals/reject/${id}`);

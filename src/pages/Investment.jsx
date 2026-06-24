@@ -367,7 +367,7 @@ const getStatusColor = (status) => {
   // console.log(selectedPackage);
 
   return (
-    <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF] p-4">
+    <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF]">
       {/* CASE A: ROOT GALLERY GRID INTERFACE VIEW */}
       {!selectedPackage ? (
         <>
@@ -652,6 +652,7 @@ const getStatusColor = (status) => {
                       </div>
                       {/* Dedicated Status Change Dropdown */}
                       <Select
+                      disabled={selectedPackage.status === "completed"}
                         value={selectedPackage.status} // Controlled by state
                         onChange={(value) =>
                           handleStatusChange(value, selectedPackage._id)
