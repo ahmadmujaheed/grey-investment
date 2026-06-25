@@ -618,7 +618,7 @@ const totalPages = Math.ceil((selectedUser?.transactionHistory?.length || 0) / i
               <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
                 <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
                   <ArrowDownLeft size={12} className="text-[#3B82F6]" />{" "}
-                  Withdrawable Amount
+                  Total Withdrawable Amount
                 </span>
                 <div className="text-xl font-extrabold text-white font-mono">
                   ₦
