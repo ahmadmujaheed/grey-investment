@@ -9,12 +9,20 @@ const Requests = () => {
   const [allRequests, setAllRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
+const loadData = async () => {
     setLoading(true);
-    await fetchRequests(); // Fetches pending from store
-    const all = await fetchAllWithdrawalsApi(); // Fetch all history
-    setAllRequests(all);
-    setLoading(false);
+    try {
+      await fetchRequests(); 
+      const all = await fetchAllWithdrawalsApi();
+      console.log("Withdrawals Data:", all); // Check if this logs empty array or an error
+      setAllRequests(all || []);
+    } catch (error) {
+      // Check the error details
+      console.error("API Error details:", error.response?.data || error.message);
+      message.error("Failed to load withdrawals. Check console for details.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadData(); }, []);

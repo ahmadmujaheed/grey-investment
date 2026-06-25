@@ -10,7 +10,7 @@ export const fetchAllUsers = async () => {
 // 👤 2. Fetch Single User Profile Workspace Node by ID
 export const fetchUserById = async (userId) => {
   const response = await apiClient.get(`/users/${userId}`);
-  // console.log(response)
+  console.log(response)
   return response.data;
 };
 

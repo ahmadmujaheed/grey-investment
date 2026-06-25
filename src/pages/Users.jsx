@@ -17,6 +17,7 @@ import {
   ArrowDownLeft,
   Wallet,
   Coins,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { Popconfirm } from "antd";
 import { motion, AnimatePresence } from "motion/react";
@@ -103,6 +104,18 @@ const Users = () => {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPhone, setNewUserPhone] = useState("");
 
+  const [currentPage, setCurrentPage] = useState(1);
+const itemsPerPage = 5;
+
+// Calculate pagination
+const indexOfLastItem = currentPage * itemsPerPage;
+const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+const currentItems = (selectedUser?.transactionHistory || []).slice(
+  indexOfFirstItem,
+  indexOfLastItem
+);
+const totalPages = Math.ceil((selectedUser?.transactionHistory?.length || 0) / itemsPerPage);
+
   // Load platform users catalog from remote API core mapping engine
   const loadUsersData = async () => {
     try {
@@ -143,35 +156,7 @@ const Users = () => {
     }
   }, [userIdFromUrl, users]);
 
-  // const handleSelectUser = (user) => {
-  //   if (user) {
-  //     setSearchParams({ id: user.id || user._id });
-  //   } else {
-  //     setSearchParams({});
-  //   }
-  // };
 
-  // Change this function in Users.jsx
-  // const handleSelectUser = async (user) => {
-  //   if (user) {
-  //     try {
-  //       // 1. Fetch the full, fresh data from the server
-  //       const fullUser = await fetchUserById(user.id || user._id);
-
-  //       console.log("this is the full user", fullUser)
-
-  //       // 2. Set the complete profile in state
-  //       setSelectedUser(fullUser);
-  //       // 3. Update the URL
-  //       setSearchParams({ id: user.id || user._id });
-  //     } catch (error) {
-  //       message.error("Failed to fetch full user details.");
-  //     }
-  //   } else {
-  //     setSelectedUser(null);
-  //     setSearchParams({});
-  //   }
-  // };
 
   const handleSelectUser = async (user) => {
     if (user) {
@@ -294,21 +279,6 @@ const Users = () => {
     0,
   );
 
-  // console.log("this is the investment", selectedInvestment)
-  // const handleLimitUpdate = async (userId, limits) => {
-  //   try {
-  //     const payload = {
-  //       userId,
-  //       withdrawableLimit: Number(limits),
-  //     };
-  //     console.log("payload", payload);
-  //     await adminSetWithdrawalAmount(payload);
-  //     message.success("Withdrawable limit updated!");
-  //     setIsLimitModalOpen(false);
-  //   } catch (err) {
-  //     message.error("Failed to update limit.");
-  //   }
-  // };
 
   const handleLimitUpdate = async (userId, amount) => {
     setLimitLoading(true);
@@ -318,23 +288,18 @@ const Users = () => {
         amountToAdd: amount,
       };
 
-      // 1. Call API
-      const result = await adminSetWithdrawalAmount(payload);
-      const newTotalLimit = result.newTotalLimit;
-
-      // 2. Single, atomic state update
-      setSelectedUser((prev) => ({
-        ...prev,
-        withdrawableLimit: newTotalLimit,
-        // Calculate remainingBalance safely using the fresh result
-        remainingBalance: newTotalLimit - (prev.totalCollected || 0),
-      }));
-
-      // 3. Close the modal and notify
+      // 1. Call API to update the limit
+      await adminSetWithdrawalAmount(payload);
+      
+      // 2. IMPORTANT: Re-fetch the full user to get fresh calculations and transaction history
+      const updatedUser = await fetchUserById(userId);
+      
+      // 3. Update state with the fresh data
+      setSelectedUser(updatedUser);
+      
+      // 4. Close the modal and notify
       setIsLimitModalOpen(false);
-      message.success(
-        `Limit updated! New total: ₦${newTotalLimit.toLocaleString()}`,
-      );
+      message.success("Limit updated successfully!");
     } catch (error) {
       message.error("Failed to update limit.");
     } finally {
@@ -565,23 +530,23 @@ const Users = () => {
                 <button className="flex items-center gap-1 px-2.5 py-1 border border-slate-800 text-[11px] font-bold hover:bg-[#1F2937] transition-colors text-[#9CA3AF] cursor-pointer">
                   <Download size={12} /> Audit Trail
                 </button>
-               <Popconfirm
-  title="Reset this user's password to 'investment'?"
-  onConfirm={() => handleResetPassword(selectedUser?.id)}
-  okText="Reset"
-  cancelText="Cancel"
->
-  <button className="flex items-center gap-1 px-2.5 py-1 bg-red-900/20 border border-red-500/50 text-[11px] font-bold text-red-400 hover:bg-red-900/40 transition-colors cursor-pointer">
-    Reset User Password
-  </button>
-</Popconfirm>
+                <Popconfirm
+                  title="Reset this user's password to 'investment'?"
+                  onConfirm={() => handleResetPassword(selectedUser?.id)}
+                  okText="Reset"
+                  cancelText="Cancel"
+                >
+                  <button className="flex items-center gap-1 px-2.5 py-1 bg-red-900/20 border border-red-500/50 text-[11px] font-bold text-red-400 hover:bg-red-900/40 transition-colors cursor-pointer">
+                    Reset User Password
+                  </button>
+                </Popconfirm>
 
-<button
-  onClick={() => setIsLimitModalOpen(true)}
-  className="flex items-center gap-1 px-2.5 py-1 bg-[#34D399]/10 border border-[#34D399]/30 text-[11px] font-bold text-[#34D399] hover:bg-[#34D399]/20 transition-colors cursor-pointer"
->
-  Set Withdrawable Amount
-</button>
+                <button
+                  onClick={() => setIsLimitModalOpen(true)}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-[#34D399]/10 border border-[#34D399]/30 text-[11px] font-bold text-[#34D399] hover:bg-[#34D399]/20 transition-colors cursor-pointer"
+                >
+                  Set Withdrawable Amount
+                </button>
               </div>
             </div>
 
@@ -656,7 +621,8 @@ const Users = () => {
                   Withdrawable Amount
                 </span>
                 <div className="text-xl font-extrabold text-white font-mono">
-                  ₦{(selectedUser?.withdrawableLimit || 0).toLocaleString()}
+                  ₦
+                  {(selectedUser?.totalWithdrawableLimit || 0).toLocaleString()}
                 </div>
               </div>
 
@@ -666,7 +632,7 @@ const Users = () => {
                   Withdrawable Balance
                 </span>
                 <div className="text-xl font-extrabold text-green-400 font-mono">
-                  ₦{(selectedUser?.remainingBalance || 0).toLocaleString()}
+                  ₦{(selectedUser?.withdrawableAmount || 0).toLocaleString()}
                 </div>
               </div>
               <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
@@ -675,7 +641,7 @@ const Users = () => {
                   Amount Collected
                 </span>
                 <div className="text-xl font-extrabold text-red-400 font-mono">
-                  ₦{(selectedUser?.totalCollected || 0).toLocaleString()}
+                  ₦{(selectedUser?.totalAmountCollected || 0).toLocaleString()}
                 </div>
               </div>
             </div>
@@ -691,10 +657,11 @@ const Users = () => {
                       <th className="p-2 text-right">Committed</th>
                       <th className="p-2 text-right">Profit</th>
                       <th className="p-2 text-right">Total</th>
+                      <th className="p-2 text-right">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
-                    {selectedUser.investmentsList.map((inv, id) => (
+                    {selectedUser.investmentsList?.map((inv, id) => (
                       <tr key={inv._id} className="hover:bg-[#1F2937]/40">
                         <td className="p-2 font-bold capitalize text-white">
                           {inv.poolName}
@@ -707,6 +674,9 @@ const Users = () => {
                         </td>
                         <td className="p-2 text-right font-mono text-[#34D399] font-bold">
                           ₦{(inv.amount + inv.yieldEarned).toLocaleString()}
+                        </td>
+                        <td className="p-2 text-right font-mono text-[#34D399] font-bold">
+                          {inv.status}
                         </td>
                       </tr>
                     ))}
@@ -746,50 +716,71 @@ const Users = () => {
 
               {/* Box 2: Inbound Capital Flow Logs */}
               <div className="border border-slate-800 bg-[#1F2937] p-4 space-y-3">
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-                    Inbound Receipts History
-                  </h4>
-                  <p className="text-[11px] text-[#9CA3AF]">
-                    Chronological history of external funding events into
-                    account wallet balance.
-                  </p>
-                </div>
-                {!selectedUser.inboundHistory ||
-                selectedUser.inboundHistory.length === 0 ? (
-                  <p className="text-xs text-[#9CA3AF] italic bg-[#090A0F] p-3 text-center border border-slate-800">
-                    No historical deposit records found.
-                  </p>
-                ) : (
-                  <div className="border border-slate-800 overflow-hidden bg-[#090A0F]">
-                    <table className="w-full text-left border-collapse text-[11px]">
-                      <thead>
-                        <tr className="bg-[#1F2937] border-b border-slate-800 font-bold text-[#9CA3AF]">
-                          <th className="p-2">Ingress Channel</th>
-                          <th className="p-2">Clear Date</th>
-                          <th className="p-2 text-right">Inbound Value</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
-                        {selectedUser.inboundHistory.map((txn, idx) => (
-                          <tr
-                            key={txn.reference || idx}
-                            className="hover:bg-[#1F2937]/40"
-                          >
-                            <td className="p-2 font-semibold text-white">
-                              {txn.method}
-                            </td>
-                            <td className="p-2 text-[#9CA3AF]">{txn.date}</td>
-                            <td className="p-2 text-right font-mono text-[#3B82F6] font-bold">
-                              ₦{txn.amount.toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+  <div>
+    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+      Transaction History
+    </h4>
+    <p className="text-[11px] text-[#9CA3AF]">
+      Chronological ledger of account activities.
+    </p>
+  </div>
+
+  {!selectedUser?.transactionHistory || selectedUser?.transactionHistory.length === 0 ? (
+    <p className="text-xs text-[#9CA3AF] italic bg-[#090A0F] p-3 text-center border border-slate-800">
+      No historical records found.
+    </p>
+  ) : (
+    <div className="border border-slate-800 overflow-hidden bg-[#090A0F]">
+      <table className="w-full text-left border-collapse text-[11px]">
+        <thead>
+          <tr className="bg-[#1F2937] border-b border-slate-800 font-bold text-[#9CA3AF]">
+            <th className="p-2">Category</th>
+            <th className="p-2">Date</th>
+            <th className="p-2 text-right">Amount</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
+          {currentItems.map((txn) => (
+            <tr key={txn._id} className="hover:bg-[#1F2937]/40">
+              <td className="p-2 font-semibold text-white capitalize">
+                {txn.category.replace("_", " ")}
+              </td>
+              <td className="p-2">
+                {new Date(txn.createdAt).toLocaleDateString()}
+              </td>
+              <td className={`p-2 text-right font-mono font-bold ${txn.type === 'inflow' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                {txn.type === 'inflow' ? '+' : '-'}₦{txn.amount.toLocaleString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center p-2 bg-[#1F2937] border-t border-slate-800">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => prev - 1)}
+            className="p-1 disabled:opacity-30 text-white"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <span className="text-[10px] text-[#9CA3AF]">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            className="p-1 disabled:opacity-30 text-white"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  )}
+</div>
             </div>
 
             {/* Quick Micro Action Controllers */}
