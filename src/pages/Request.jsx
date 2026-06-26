@@ -27,14 +27,19 @@ const loadData = async () => {
 
   useEffect(() => { loadData(); }, []);
 
-  const handleAction = async (id, action) => {
-    try {
-      if (action === "approve") await approveWithdrawalApi(id);
-      else await rejectWithdrawalApi(id);
-      message.success(`Request ${action}ed`);
-      loadData(); // Refresh UI
-    } catch (error) { message.error("Action failed"); }
-  };
+ const handleAction = async (id, action) => {
+  try {
+    if (action === "approve") await approveWithdrawalApi(id);
+    else await rejectWithdrawalApi(id);
+    
+    message.success(`Request ${action}ed`);
+
+    const updatedUser = await fetchUserById(selectedUser.id);
+    setSelectedUser(updatedUser); 
+  } catch (error) { 
+    message.error("Action failed"); 
+  }
+};
 
   // Filtered data for tabs
   const pendingData = allRequests.filter(r => r.status === 'pending');
