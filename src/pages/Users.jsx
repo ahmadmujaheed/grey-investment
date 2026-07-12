@@ -1,139 +1,92 @@
-import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import {
-  UserPlus,
-  Users as UsersIcon,
-  TrendingUp,
-  ShieldCheck,
-  Mail,
   Calendar,
+  Eye,
+  Mail,
   Phone,
   Search,
-  Eye,
-  ArrowLeft,
-  Briefcase,
-  ArrowUpRight,
-  Download,
-  ArrowDownLeft,
-  Wallet,
-  Coins,
-  ChevronLeft, ChevronRight
+  ShieldCheck,
+  TrendingUp,
+  UserPlus,
+  Users as UsersIcon,
 } from "lucide-react";
-import { Popconfirm } from "antd";
+import { message, Popconfirm, Tag } from "antd";
 import { motion, AnimatePresence } from "motion/react";
-import { message } from "antd";
+
 import {
   fetchAllUsers,
   fetchUserById,
   provisionNewUser,
   resetUserPassword,
 } from "../api/userApi";
-import { adminSetWithdrawalAmount } from "../api/withdrawalApi";
 
-const fadeInUpRow = {
-  hidden: { opacity: 0, y: 8 },
-  visible: (i) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.03, duration: 0.22, ease: "easeOut" },
-  }),
+const formatCurrency = (amount = 0) =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(Number(amount) || 0);
+
+const formatDate = (date) => {
+  if (!date) return "—";
+
+  return new Date(date).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 };
 
-// --- SKELETON LOADERS FOR DASHBOARD SECTIONS ---
-const StatisticsSkeleton = () => (
-  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-pulse">
-    {[1, 2, 3].map((n) => (
-      <div
-        key={n}
-        className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4 rounded-none"
-      >
-        <div className="w-10 h-10 bg-[#090A0F] rounded-none shrink-0" />
-        <div className="space-y-2 flex-1">
-          <div className="h-3 bg-slate-800 w-1/3 rounded-none" />
-          <div className="h-5 bg-slate-800 w-1/2 rounded-none" />
-        </div>
-      </div>
-    ))}
-  </div>
-);
+const getStatusColor = (status) => {
+  switch (status) {
+    case "active":
+      return "green";
+    case "completed":
+      return "blue";
+    case "pending":
+      return "orange";
+    case "paused":
+      return "volcano";
+    default:
+      return "default";
+  }
+};
 
-const RosterTableSkeleton = () => (
-  <div className="border border-slate-800 bg-[#1F2937] rounded-none overflow-x-auto animate-pulse">
-    <div className="h-10 bg-[#090A0F] w-full" />
-    <div className="p-4 space-y-4">
-      {[1, 2, 3, 4, 5].map((n) => (
-        <div
-          key={n}
-          className="flex justify-between items-center py-2 border-b border-slate-800/50"
-        >
-          <div className="flex items-center gap-3 w-1/4">
-            <div className="w-8 h-8 bg-slate-800 rounded-none shrink-0" />
-            <div className="space-y-1.5 flex-1">
-              <div className="h-3 bg-slate-800 w-3/4 rounded-none" />
-              <div className="h-2 bg-slate-800 w-1/2 rounded-none" />
-            </div>
-          </div>
-          <div className="h-3 bg-slate-800 w-1/6 rounded-none" />
-          <div className="h-3 bg-slate-800 w-1/12 rounded-none" />
-          <div className="h-3 bg-slate-800 w-1/12 rounded-none" />
-          <div className="h-5 bg-slate-800 w-8 rounded-none" />
-        </div>
-      ))}
-    </div>
-  </div>
-);
+const getAvailableBalance = (allocation) =>
+  Number(
+    allocation?.availableBalance ??
+      allocation?.remainingWithdrawable ??
+      allocation?.availableToWithdraw ??
+      0,
+  );
 
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [limits, setLimits] = useState({});
-  const [limitLoading, setLimitLoading] = useState(false);
-  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
-  const [selectedInvestment, setSelectedInvestment] = useState(null);
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const userIdFromUrl = searchParams.get("id");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [selectedUser, setSelectedUser] = useState(null);
-
-  // Create User Form States
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPhone, setNewUserPhone] = useState("");
 
-  const [currentPage, setCurrentPage] = useState(1);
-const itemsPerPage = 5;
+  const [isUserDetailsModalOpen, setIsUserDetailsModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+   const [isModalOpen, setIsModalOpen] = useState(false);
 
-// Calculate pagination
-const indexOfLastItem = currentPage * itemsPerPage;
-const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-const currentItems = (selectedUser?.transactionHistory || []).slice(
-  indexOfFirstItem,
-  indexOfLastItem
-);
-const totalPages = Math.ceil((selectedUser?.transactionHistory?.length || 0) / itemsPerPage);
-
-  // Load platform users catalog from remote API core mapping engine
   const loadUsersData = async () => {
     try {
       setLoading(true);
+
       const data = await fetchAllUsers();
 
-      // Map the incoming data to ensure all fields exist
-      const processedUsers = data.map((user) => ({
-        ...user,
-        totalInvested: user.totalInvested || 0,
-        totalProfit: user.totalProfit || 0,
-        totalInbound: user.totalInbound || 0,
-        investmentsList: user.investmentsList || [],
-        inboundHistory: user.inboundHistory || [],
-      }));
-
-      setUsers(processedUsers);
+      // Your response is: { success, count, users }
+      setUsers(data?.users || []);
     } catch (error) {
+      console.error(error);
       message.error("Failed to load user data.");
     } finally {
       setLoading(false);
@@ -144,673 +97,502 @@ const totalPages = Math.ceil((selectedUser?.transactionHistory?.length || 0) / i
     loadUsersData();
   }, []);
 
-  // Sync state view node with browser routing deep-link indicators
-  useEffect(() => {
-    if (userIdFromUrl && users.length > 0) {
-      const user = users.find(
-        (u) => u.id === userIdFromUrl || u._id === userIdFromUrl,
-      );
-      if (user) setSelectedUser(user);
-    } else {
-      setSelectedUser(null);
-    }
-  }, [userIdFromUrl, users]);
+  const openUserDetailsModal = async (user) => {
+    setSelectedUser(user);
+    setIsUserDetailsModalOpen(true);
 
+    try {
+      setDetailsLoading(true);
 
+      const response = await fetchUserById(user._id || user.id);
 
-  const handleSelectUser = async (user) => {
-    if (user) {
-      try {
-        const fullUser = await fetchUserById(user.id || user._id);
+      // Supports APIs that return { user: {...} } or just {...}.
+      const fullUser = response?.user || response?.data?.user || response;
 
-        // FORCE a new object reference using the spread operator
-        // This guarantees React detects the change and re-renders
-        setSelectedUser({ ...fullUser });
-        console.log("Rendering Component with:", fullUser);
-
-        setSearchParams({ id: user.id || user._id });
-      } catch (error) {
-        message.error("Failed to fetch full user details.");
-      }
-    } else {
-      setSelectedUser(null);
-      setSearchParams({});
+      setSelectedUser(fullUser);
+    } catch (error) {
+      console.error(error);
+      message.error("Could not load full user details.");
+    } finally {
+      setDetailsLoading(false);
     }
   };
 
-  useEffect(() => {
-    const loadUser = async () => {
-      if (!userIdFromUrl) {
-        setSelectedUser(null);
-        return;
-      }
+  const closeUserDetailsModal = () => {
+    setIsUserDetailsModalOpen(false);
+    setSelectedUser(null);
+  };
 
-      try {
-        const fullUser = await fetchUserById(userIdFromUrl);
-        setSelectedUser(fullUser);
-      } catch (err) {
-        message.error("Failed to load user.");
-      }
-    };
+  const handleCreateUser = async (event) => {
+    event.preventDefault();
 
-    loadUser();
-  }, [userIdFromUrl]);
-
-  // Debugging line
-  // console.log("Rendering Component with:", selectedUser?.withdrawableLimit);
-
-  const handleCreateUser = async (e) => {
-    e.preventDefault();
-    if (!newUserName || !newUserEmail || !newUserPhone) return;
+    if (!newUserName || !newUserEmail || !newUserPhone) {
+      message.warning("Please complete all registration fields.");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
-      const payload = {
+
+      await provisionNewUser({
         name: newUserName,
         email: newUserEmail,
         phone: newUserPhone,
-      };
+      });
 
-      const responseData = await provisionNewUser(payload);
+      message.success("New investor registered successfully.");
 
-      // Structure response record properties to gracefully populate immediate React UI states
-      const structuredUser = {
-        id: responseData.user._id,
-        name: responseData.user.name,
-        email: responseData.user.email,
-        phone: responseData.user.phone,
-        joinedDate: new Date(responseData.user.createdAt).toLocaleDateString(
-          "en-GB",
-          {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          },
-        ),
-        totalInvested: 0,
-        totalInbound: 0,
-        totalProfit: 0,
-        activeTiers: 0,
-        investmentsList: [],
-        inboundHistory: [],
-      };
-
-      setUsers([structuredUser, ...users]);
       setNewUserName("");
       setNewUserEmail("");
       setNewUserPhone("");
-      setIsModalOpen(false);
-      message.success(
-        responseData.message || "New investor profile registered successfully!",
-      );
+      setIsCreateModalOpen(false);
+
+      await loadUsersData();
     } catch (error) {
+      console.error(error);
+
       message.error(
-        error.response?.data?.message ||
-          "Failed to provision workspace profile parameters.",
+        error?.response?.data?.message || "Failed to register investor.",
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleResetPassword = async (userId) => {
-    try {
-      // Ensure this name matches the import above
-      await resetUserPassword(userId);
-      message.success("Password successfully reset to default.");
-    } catch (error) {
-      // Provide better error feedback
-      message.error(
-        error.response?.data?.message || "Failed to reset password.",
-      );
-    }
-  };
+  const handleResetPassword = async () => {
+  const userId = selectedUser?._id || selectedUser?.id;
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  if (!userId) {
+    message.error("User ID is missing.");
+    return;
+  }
 
-  const totalUsersCount = users.length;
-  const activeInvestorsCount = users.filter((u) => u.totalInvested > 0).length;
-  const totalPlatformCapital = users.reduce(
-    (sum, u) => sum + (u.totalInvested || 0),
-    0,
-  );
+  try {
+    await resetUserPassword({ userId });
 
+    message.success("Password reset successfully.");
+  } catch (error) {
+    message.error(
+      error?.response?.data?.message || "Failed to reset password."
+    );
+  }
+};
 
-  const handleLimitUpdate = async (userId, amount) => {
-    setLimitLoading(true);
-    try {
-      const payload = {
-        userId: userId,
-        amountToAdd: amount,
-      };
+  const filteredUsers = useMemo(() => {
+    const search = searchTerm.trim().toLowerCase();
 
-      // 1. Call API to update the limit
-      await adminSetWithdrawalAmount(payload);
-      
-      // 2. IMPORTANT: Re-fetch the full user to get fresh calculations and transaction history
-      const updatedUser = await fetchUserById(userId);
-      
-      // 3. Update state with the fresh data
-      setSelectedUser(updatedUser);
-      
-      // 4. Close the modal and notify
-      setIsLimitModalOpen(false);
-      message.success("Limit updated successfully!");
-    } catch (error) {
-      message.error("Failed to update limit.");
-    } finally {
-      setLimitLoading(false);
-    }
-  };
+    if (!search) return users;
+
+    return users.filter(
+      (user) =>
+        user.name?.toLowerCase().includes(search) ||
+        user.email?.toLowerCase().includes(search) ||
+        user.phone?.includes(search),
+    );
+  }, [users, searchTerm]);
+
+  const metrics = useMemo(() => {
+    const totalCapital = users.reduce(
+      (total, user) =>
+        total +
+        (user.allocations || []).reduce(
+          (allocationTotal, allocation) =>
+            allocationTotal + Number(allocation.principal || 0),
+          0,
+        ),
+      0,
+    );
+
+    const fundedUsers = users.filter(
+      (user) => (user.allocations || []).length > 0,
+    ).length;
+
+    return {
+      totalUsers: users.length,
+      fundedUsers,
+      totalCapital,
+    };
+  }, [users]);
 
   return (
-    <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF]">
-      <AnimatePresence mode="wait">
-        {!selectedUser ? (
-          /* VIEW 1: MASTER LIST ROSTER DIRECTORY */
-          <motion.div
-            key="list-panel"
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 8 }}
-            className="space-y-6"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+    <div className="min-h-screen space-y-6 bg-[#1F1F1F] text-[#9CA3AF]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Investor Accounts
+          </h1>
+          <p className="mt-0.5 text-sm text-[#9CA3AF]">
+            Review registered investors, balances, and investment allocations.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 transition-colors cursor-pointer"
+        >
+          <UserPlus size={16} />
+          Register Investor
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4">
+          <div className="p-2.5 bg-[#090A0F] text-[#34D399]">
+            <UsersIcon size={20} />
+          </div>
+          <div>
+            <span className="text-xs font-semibold text-[#9CA3AF] block">
+              Total Profiles
+            </span>
+            <span className="text-lg font-semibold text-white">
+              {metrics.totalUsers} Users
+            </span>
+          </div>
+        </div>
+
+        <div className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4">
+          <div className="p-2.5 bg-[#090A0F] text-[#3B82F6]">
+            <ShieldCheck size={20} />
+          </div>
+          <div>
+            <span className="text-xs font-semibold text-[#9CA3AF] block">
+              Funded Investors
+            </span>
+            <span className="text-lg font-semibold text-white">
+              {metrics.fundedUsers} Active
+            </span>
+          </div>
+        </div>
+
+        <div className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4">
+          <div className="p-2.5 bg-[#090A0F] text-amber-500">
+            <TrendingUp size={20} />
+          </div>
+          <div>
+            <span className="text-xs font-semibold text-[#9CA3AF] block">
+              Total Principal
+            </span>
+            <span className="text-lg font-semibold text-white">
+              {formatCurrency(metrics.totalCapital)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center max-w-sm border border-slate-800 bg-[#1F2937] px-3 py-2 focus-within:border-[#34D399] transition-colors">
+        <Search size={16} className="text-[#9CA3AF] mr-2 shrink-0" />
+        <input
+          type="text"
+          placeholder="Search by name, email or phone..."
+          value={searchTerm}
+          onChange={(event) => setSearchTerm(event.target.value)}
+          className="w-full text-xs bg-transparent text-white focus:outline-none font-medium placeholder-[#9CA3AF]"
+        />
+      </div>
+
+      <div className="border border-slate-800 bg-[#1F2937] overflow-x-auto">
+        <table className="min-w-[850px] w-full text-left border-collapse text-xs">
+          <thead>
+            <tr className="bg-[#090A0F] border-b border-slate-800 font-bold text-[#9CA3AF] uppercase tracking-wider">
+              <th className="p-4">Investor Identity</th>
+              <th className="p-4">Contact Channels</th>
+              <th className="p-4">Join Date</th>
+              <th className="p-4 text-right">Investments</th>
+              <th className="p-4 text-right">Principal Invested</th>
+              <th className="p-4 text-center">Actions</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="p-10 text-center">
+                  Loading investor records...
+                </td>
+              </tr>
+            ) : filteredUsers.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-10 text-center italic">
+                  No matching investor records found.
+                </td>
+              </tr>
+            ) : (
+              filteredUsers.map((user) => {
+                const totalInvested = (user.allocations || []).reduce(
+                  (sum, allocation) => sum + Number(allocation.principal || 0),
+                  0,
+                );
+
+                return (
+                  <tr
+                    key={user._id || user.id}
+                    className="hover:bg-[#090A0F]/40 transition-colors"
+                  >
+                    <td className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#090A0F] text-white font-semibold flex items-center justify-center text-lg capitalize shrink-0">
+                          {user.name?.charAt(0) || "?"}
+                        </div>
+
+                        <div>
+                          <p className="font-semibold capitalize text-white text-sm">
+                            {user.name}
+                          </p>
+                          <p className="mt-0.5 text-[10px] uppercase text-[#9CA3AF]">
+                            {user.role || "user"}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="p-4 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <Mail size={12} className="shrink-0" />
+                        <span>{user.email || "—"}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <Phone size={12} className="shrink-0" />
+                        <span>{user.phone || "—"}</span>
+                      </div>
+                    </td>
+
+                    <td className="p-4">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar size={12} />
+                        <span>{formatDate(user.createdAt)}</span>
+                      </div>
+                    </td>
+
+                    <td className="p-4 text-right font-mono text-white">
+                      {(user.allocations || []).length}
+                    </td>
+
+                    <td className="p-4 text-right font-mono font-extrabold text-[#34D399] text-sm">
+                      {formatCurrency(totalInvested)}
+                    </td>
+
+                    <td className="p-4 text-center">
+                      <button
+                        onClick={() => openUserDetailsModal(user)}
+                        title="View investor details"
+                        className="p-1.5 text-[#9CA3AF] hover:text-[#34D399] hover:bg-[#090A0F] transition-all inline-flex items-center justify-center cursor-pointer"
+                      >
+                        <Eye size={15} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {isUserDetailsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={closeUserDetailsModal}
+            className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-xs"
+          />
+
+          <div className="relative z-10 w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-slate-800 bg-[#1F2937] p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-white">
-                  Investor Accounts
-                </h1>
-                <p className="text-sm text-[#9CA3AF] mt-0.5">
-                  Review registered client balances and provision credential
-                  records.
+                <h3 className="font-bold text-base text-white">
+                  Investor Profile Details
+                </h3>
+                <p className="mt-0.5 text-xs text-[#9CA3AF]">
+                  Review investor details and all investment allocations.
                 </p>
               </div>
 
               <button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 rounded-none transition-colors shrink-0 cursor-pointer"
+                type="button"
+                onClick={closeUserDetailsModal}
+                className="text-[#9CA3AF] hover:text-white font-bold text-sm cursor-pointer"
               >
-                <UserPlus size={16} />
-                Register Investor
+                ✕
               </button>
             </div>
 
-            {/* Platform Metrics Section Wrapper */}
-            {loading ? (
-              <StatisticsSkeleton />
+            {detailsLoading ? (
+              <div className="py-12 text-center text-sm text-[#9CA3AF]">
+                Loading investor information...
+              </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4 rounded-none">
-                  <div className="p-2.5 bg-[#090A0F] text-[#34D399]">
-                    <UsersIcon size={20} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-[#9CA3AF] block">
-                      Total Profiles
-                    </span>
-                    <span className="text-lg font-semibold text-white">
-                      {totalUsersCount} Users
-                    </span>
-                  </div>
-                </div>
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#090A0F] border border-slate-800 p-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 shrink-0 rounded-full bg-[#1F2937] border border-slate-700 text-[#34D399] flex items-center justify-center text-lg font-bold">
+                      {selectedUser?.name?.charAt(0)?.toUpperCase() || "U"}
+                    </div>
 
-                <div className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4 rounded-none">
-                  <div className="p-2.5 bg-[#090A0F] text-[#3B82F6]">
-                    <ShieldCheck size={20} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-[#9CA3AF] block">
-                      Funded Stakeholders
-                    </span>
-                    <span className="text-lg font-semibold text-white">
-                      {activeInvestorsCount} Active
-                    </span>
-                  </div>
-                </div>
-
-                <div className="border border-slate-800 p-4 bg-[#1F2937] flex items-center gap-4 rounded-none">
-                  <div className="p-2.5 bg-[#090A0F] text-amber-500">
-                    <TrendingUp size={20} />
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-[#9CA3AF] block">
-                      Total Asset Volume
-                    </span>
-                    <span className="text-lg font-semibold text-white">
-                      ₦{totalPlatformCapital.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Filter Input Control */}
-            <div className="flex items-center max-w-xs border border-slate-800 bg-[#1F2937] px-3 py-1.5 focus-within:border-[#34D399] transition-colors">
-              <Search size={16} className="text-[#9CA3AF] mr-2 shrink-0" />
-              <input
-                type="text"
-                placeholder="Filter by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full text-xs bg-transparent text-white focus:outline-none font-medium placeholder-[#9CA3AF]"
-              />
-            </div>
-
-            {/* Main Roster Dynamic Table Segment */}
-            {loading ? (
-              <RosterTableSkeleton />
-            ) : (
-              <div className="border border-slate-800 bg-[#1F2937] rounded-none overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#090A0F] border-b border-slate-800 font-bold text-[#9CA3AF] uppercase tracking-wider">
-                      <th className="p-4 font-bold">Investor Identity</th>
-                      <th className="p-4 font-bold">Contact Channels</th>
-                      <th className="p-4 font-bold">Join Date</th>
-                      <th className="p-4 font-bold text-right">
-                        Principal Invested
-                      </th>
-                      <th className="p-4 font-bold text-right">
-                        Net Profit Yield
-                      </th>
-                      <th className="p-4 font-bold text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
-                    {filteredUsers.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={6}
-                          className="p-8 text-center text-[#9CA3AF] font-medium italic"
-                        >
-                          No matching registered database records found.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredUsers.map((user, idx) => (
-                        <motion.tr
-                          key={user.id || user._id}
-                          custom={idx}
-                          variants={fadeInUpRow}
-                          initial="hidden"
-                          animate="visible"
-                          className="hover:bg-[#090A0F]/40 transition-colors"
-                        >
-                          <td className="p-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#090A0F] text-white font-semibold flex items-center justify-center text-lg capitalize shrink-0">
-                                {user.name ? user.name.charAt(0) : "?"}
-                              </div>
-                              <div>
-                                <div className="font-semibold capitalize text-white text-sm">
-                                  {user.name}
-                                </div>
-                                {/* <div className="text-[10px] text-[#9CA3AF] font-mono tracking-wide">ID: #{user.id || user._id}</div> */}
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="p-4 space-y-0.5">
-                            <div className="flex items-center gap-1.5 text-[#9CA3AF]">
-                              <Mail
-                                size={12}
-                                className="text-[#9CA3AF] shrink-0"
-                              />
-                              <span className="truncate max-w-40">
-                                {user.email}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[#9CA3AF]">
-                              <Phone
-                                size={12}
-                                className="text-[#9CA3AF] shrink-0"
-                              />
-                              <span>{user.phone}</span>
-                            </div>
-                          </td>
-
-                          <td className="p-4 text-[#9CA3AF]">
-                            <div className="flex items-center gap-1.5">
-                              <Calendar size={12} className="text-[#9CA3AF]" />
-                              <span>{user.joinedDate}</span>
-                            </div>
-                          </td>
-
-                          <td className="p-4 text-right font-mono font-extrabold text-white text-sm">
-                            ₦{(user.totalInvested || 0).toLocaleString()}
-                          </td>
-
-                          <td className="p-4 text-right font-mono font-extrabold text-[#34D399] text-sm">
-                            ₦{(user.totalProfit || 0).toLocaleString()}
-                          </td>
-
-                          <td className="p-4 text-center">
-                            <button
-                              onClick={() => handleSelectUser(user)}
-                              className="p-1.5 text-[#9CA3AF] hover:text-[#34D399] hover:bg-[#090A0F] transition-all inline-flex items-center justify-center cursor-pointer"
-                            >
-                              <Eye size={15} />
-                            </button>
-                          </td>
-                        </motion.tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </motion.div>
-        ) : (
-          /* VIEW 2: COMPACT, UNIFIED SIMPLIFIED DETAILS VIEW */
-          <motion.div
-            key="profile-panel"
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -8 }}
-            className="space-y-6"
-          >
-            {/* Minimal Header Navigation */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <button
-                onClick={() => handleSelectUser(null)}
-                className="inline-flex items-center gap-1.5 text-[#9CA3AF] hover:text-white text-xs font-bold transition-colors group cursor-pointer"
-              >
-                <ArrowLeft
-                  size={14}
-                  className="group-hover:-translate-x-0.5 transition-transform"
-                />
-                <span>Back to Roster</span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                <button className="flex items-center gap-1 px-2.5 py-1 border border-slate-800 text-[11px] font-bold hover:bg-[#1F2937] transition-colors text-[#9CA3AF] cursor-pointer">
-                  <Download size={12} /> Audit Trail
-                </button>
-                <Popconfirm
-                  title="Reset this user's password to 'investment'?"
-                  onConfirm={() => handleResetPassword(selectedUser?.id)}
-                  okText="Reset"
-                  cancelText="Cancel"
-                >
-                  <button className="flex items-center gap-1 px-2.5 py-1 bg-red-900/20 border border-red-500/50 text-[11px] font-bold text-red-400 hover:bg-red-900/40 transition-colors cursor-pointer">
-                    Reset User Password
-                  </button>
-                </Popconfirm>
-
-                <button
-                  onClick={() => setIsLimitModalOpen(true)}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-[#34D399]/10 border border-[#34D399]/30 text-[11px] font-bold text-[#34D399] hover:bg-[#34D399]/20 transition-colors cursor-pointer"
-                >
-                  Set Withdrawable Amount
-                </button>
-              </div>
-            </div>
-
-            {/* Compact Identification Card */}
-            <div className="border border-slate-800 bg-[#1F2937] p-4 flex flex-wrap justify-between items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#090A0F] text-white font-bold flex items-center justify-center text-lg shrink-0">
-                  {selectedUser.name ? selectedUser.name.charAt(0) : "?"}
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold capitalize text-white tracking-tight">
-                    {selectedUser.name}
-                  </h2>
-                  <div className="flex items-center gap-x-3 text-[11px] text-[#9CA3AF] font-medium">
-                    <span className="flex items-center gap-1">
-                      <Mail size={11} className="text-[#9CA3AF]" />{" "}
-                      {selectedUser.email}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Phone size={11} className="text-[#9CA3AF]" />{" "}
-                      {selectedUser.phone}
-                    </span>
-                    <span className="text-slate-700">|</span>
-                    <span>Enrolled: {selectedUser.joinedDate}</span>
-                  </div>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono font-bold uppercase bg-[#090A0F] border border-slate-800 text-[#34D399] px-2 py-0.5">
-                ● Active Profile
-              </span>
-            </div>
-
-            {/* Streamlined Core Figures Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
-                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <Briefcase size={12} className="text-amber-500" /> Total Money
-                  Invested
-                </span>
-                <div className="text-xl font-extrabold text-amber-500 font-mono">
-                  ₦{(selectedUser.totalInvested || 0).toLocaleString()}
-                </div>
-              </div>
-
-              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
-                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <Coins size={12} className="text-[#34D399]" />
-                  Profit
-                </span>
-                <div className="text-xl font-extrabold text-green-400 font-mono">
-                  ₦{(selectedUser.totalProfit || 0).toLocaleString()}
-                </div>
-              </div>
-
-              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
-                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <ArrowDownLeft size={12} className="text-[#3B82F6]" /> Capital
-                  + Profit
-                </span>
-                <div className="text-xl font-extrabold text-white font-mono">
-                  ₦
-                  {(selectedUser.totalAssetValue || 0).toLocaleString()}
-                </div>
-              </div>
-              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
-                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <ArrowDownLeft size={12} className="text-[#3B82F6]" /> Total Remaining
-                </span>
-                <div className="text-xl font-extrabold text-white font-mono">
-                  ₦
-                  {(selectedUser.totalRemaining || 0).toLocaleString()}
-                </div>
-              </div>
-
-              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
-                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <ArrowDownLeft size={12} className="text-[#3B82F6]" />{" "}
-                  Total Withdrawable Amount
-                </span>
-                <div className="text-xl font-extrabold text-white font-mono">
-                  ₦
-                  {(selectedUser?.totalWithdrawableLimit || 0).toLocaleString()}
-                </div>
-              </div>
-
-              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
-                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <ArrowDownLeft size={12} className="text-[#3B82F6]" />{" "}
-                  Withdrawable Balance
-                </span>
-                <div className="text-xl font-extrabold text-green-400 font-mono">
-                  ₦{(selectedUser?.withdrawableAmount || 0).toLocaleString()}
-                </div>
-              </div>
-              <div className="border border-slate-800 p-4 bg-[#1F2937] space-y-1">
-                <span className="text-[#9CA3AF] text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <ArrowDownLeft size={12} className="text-[#3B82F6]" /> Total
-                  Amount Collected
-                </span>
-                <div className="text-xl font-extrabold text-red-400 font-mono">
-                  ₦{(selectedUser?.totalAmountCollected || 0).toLocaleString()}
-                </div>
-              </div>
-            </div>
-
-            {/* UNIFIED ADMINISTRATIVE DATA GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Box 1: Placed Investment Allocations */}
-              <div className="border border-slate-800 overflow-hidden bg-[#090A0F]">
-                <table className="w-full text-left border-collapse text-[11px]">
-                  <thead>
-                    <tr className="bg-[#1F2937] border-b border-slate-800 font-bold text-[#9CA3AF]">
-                      <th className="p-2">Asset Pool Class</th>
-                      <th className="p-2 text-right">Committed</th>
-                      <th className="p-2 text-right">Profit</th>
-                      <th className="p-2 text-right">Total</th>
-                      <th className="p-2 text-right">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
-                    {selectedUser.investmentsList?.map((inv, id) => (
-                      <tr key={inv._id} className="hover:bg-[#1F2937]/40">
-                        <td className="p-2 font-bold capitalize text-white">
-                          {inv.poolName}
-                        </td>
-                        <td className="p-2 text-right font-mono text-white">
-                          ₦{inv.amount.toLocaleString()}
-                        </td>
-                        <td className="p-2 text-right font-mono text-[#34D399] font-bold">
-                          ₦{inv.yieldEarned.toLocaleString()}
-                        </td>
-                        <td className="p-2 text-right font-mono text-[#34D399] font-bold">
-                          ₦{(inv.amount + inv.yieldEarned).toLocaleString()}
-                        </td>
-                        <td className="p-2 text-right font-mono text-[#34D399] font-bold">
-                          {inv.status}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {isLimitModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-                  <div className="bg-[#1F2937] border border-slate-800 p-6 w-80 text-white">
-                    <h3 className="font-bold mb-4">Set Withdrawable Amount</h3>
-                    <input
-                      type="number"
-                      placeholder="Enter amount"
-                      className="w-full p-2 bg-[#090A0F] border border-slate-800 mb-4"
-                      onChange={(e) => setLimits(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setIsLimitModalOpen(false)}
-                        className="px-4 py-2 bg-slate-700"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() =>
-                          handleLimitUpdate(selectedUser.id, limits)
-                        }
-                        className="px-4 py-2 bg-[#34D399] text-[#090A0F] font-bold"
-                      >
-                        {limitLoading ? "Please wait..." : "Update"}
-                      </button>
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-white capitalize">
+                        {selectedUser?.name || "Unknown user"}
+                      </h3>
+                      <p className="truncate text-xs text-[#9CA3AF]">
+                        {selectedUser?.email || "No email"}
+                      </p>
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-2">
+                    <Tag
+                      color={selectedUser?.role === "admin" ? "blue" : "green"}
+                      className="m-0 uppercase font-bold"
+                    >
+                      {selectedUser?.role || "user"}
+                    </Tag>
+
+                    <Popconfirm
+                      title="Reset user password?"
+                      description="The password will be reset to the default password."
+                      okText="Reset"
+                      cancelText="Cancel"
+                      onConfirm={handleResetPassword}
+                    >
+                      <button className="px-3 py-1.5 border border-rose-500/40 bg-rose-950/20 text-[10px] font-bold uppercase text-rose-400 hover:bg-rose-950/40 cursor-pointer">
+                        Reset Password
+                      </button>
+                    </Popconfirm>
+                  </div>
                 </div>
-              )}
 
-              {/* Box 2: Inbound Capital Flow Logs */}
-              <div className="border border-slate-800 bg-[#1F2937] p-4 space-y-3">
-  <div>
-    <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-      Transaction History
-    </h4>
-    <p className="text-[11px] text-[#9CA3AF]">
-      Chronological ledger of account activities.
-    </p>
-  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="border border-slate-800 bg-[#090A0F] p-3">
+                    <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
+                      Phone Number
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {selectedUser?.phone || "—"}
+                    </p>
+                  </div>
 
-  {!selectedUser?.transactionHistory || selectedUser?.transactionHistory.length === 0 ? (
-    <p className="text-xs text-[#9CA3AF] italic bg-[#090A0F] p-3 text-center border border-slate-800">
-      No historical records found.
-    </p>
-  ) : (
-    <div className="border border-slate-800 overflow-hidden bg-[#090A0F]">
-      <table className="w-full text-left border-collapse text-[11px]">
-        <thead>
-          <tr className="bg-[#1F2937] border-b border-slate-800 font-bold text-[#9CA3AF]">
-            <th className="p-2">Category</th>
-            <th className="p-2">Date</th>
-            <th className="p-2 text-right">Amount</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
-          {currentItems.map((txn) => (
-            <tr key={txn._id} className="hover:bg-[#1F2937]/40">
-              <td className="p-2 font-semibold text-white capitalize">
-                {txn.category.replace("_", " ")}
-              </td>
-              <td className="p-2">
-                {new Date(txn.createdAt).toLocaleDateString()}
-              </td>
-              <td className={`p-2 text-right font-mono font-bold ${txn.type === 'inflow' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {txn.type === 'inflow' ? '+' : '-'}₦{txn.amount.toLocaleString()}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  <div className="border border-slate-800 bg-[#090A0F] p-3">
+                    <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
+                      Withdrawable Balance
+                    </p>
+                    <p className="mt-1 text-sm font-mono font-bold text-[#34D399]">
+                      {formatCurrency(selectedUser?.withdrawableLimit)}
+                    </p>
+                  </div>
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-between items-center p-2 bg-[#1F2937] border-t border-slate-800">
-          <button
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage(prev => prev - 1)}
-            className="p-1 disabled:opacity-30 text-white"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <span className="text-[10px] text-[#9CA3AF]">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage(prev => prev + 1)}
-            className="p-1 disabled:opacity-30 text-white"
-          >
-            <ChevronRight size={14} />
-          </button>
+                  <div className="border border-slate-800 bg-[#090A0F] p-3">
+                    <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
+                      Registered
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {formatDate(selectedUser?.createdAt)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border border-slate-800 overflow-x-auto">
+                  <div className="flex items-center justify-between px-4 py-3 bg-[#090A0F] border-b border-slate-800">
+                    <h4 className="text-xs uppercase font-bold text-white">
+                      Investment Allocations
+                    </h4>
+
+                    <span className="text-xs text-[#9CA3AF]">
+                      {selectedUser?.allocations?.length || 0} allocation(s)
+                    </span>
+                  </div>
+
+                  <table className="min-w-[900px] w-full text-left text-xs">
+                    <thead className="bg-[#1F2937] text-[10px] uppercase text-[#9CA3AF]">
+                      <tr>
+                        <th className="px-4 py-3">Investment</th>
+                        <th className="px-4 py-3 text-right">Principal</th>
+                        <th className="px-4 py-3 text-right">Profit</th>
+                        <th className="px-4 py-3 text-right">Total Value</th>
+                        <th className="px-4 py-3 text-right">Limit</th>
+                        <th className="px-4 py-3 text-right">
+                          Available Balance
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          Reinvest
+                        </th>
+                        <th className="px-4 py-3 text-right">Status</th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-slate-800">
+                      {(selectedUser?.allocations || []).length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-4 py-8 text-center text-[#9CA3AF]"
+                          >
+                            This user has no investment allocations.
+                          </td>
+                        </tr>
+                      ) : (
+                        selectedUser.allocations.map((allocation) => (
+                          <tr
+                            key={allocation._id || allocation.id}
+                            className="bg-[#1F2937] hover:bg-[#111827]"
+                          >
+                            <td className="px-4 py-3">
+                              <p className="font-bold text-white capitalize!">
+                                {allocation.investment?.title ||
+                                  "Unknown investment"}
+                              </p>
+                              <p className="mt-0.5 text-[10px] text-[#9CA3AF]">
+                                {allocation.investment?.reference ||
+                                  "No reference"}
+                              </p>
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-mono text-white">
+                              {formatCurrency(allocation.principal)}
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-mono text-[#34D399]">
+                              {formatCurrency(allocation.profitEarned)}
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-mono text-blue-400">
+                              {formatCurrency(
+                                allocation.totalValue ??
+                                  Number(allocation.principal || 0) +
+                                    Number(allocation.profitEarned || 0),
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-mono text-amber-400">
+                              {formatCurrency(allocation.withdrawableLimit)}
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">
+                              {formatCurrency(getAvailableBalance(allocation))}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">
+                              {formatCurrency(allocation?.amountReinvested || 0)}
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              <Tag
+                                color={getStatusColor(allocation.status)}
+                                className="m-0 text-[10px] uppercase"
+                              >
+                                {allocation?.investment?.status || "unknown"}
+                              </Tag>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
-    </div>
-  )}
-</div>
-            </div>
 
-            {/* Quick Micro Action Controllers */}
-            {/* <div className="flex items-center gap-2 pt-2 border-t border-slate-800 text-[11px]">
-              <span className="font-bold text-[#9CA3AF] uppercase tracking-wider text-[10px]">Admin Quick Tasks:</span>
-              <button 
-                onClick={() => message.info("Task action: Record Inbound Cash Deposit")}
-                className="px-2 py-1 border border-slate-800 text-[#9CA3AF] hover:bg-[#1F2937] font-semibold bg-[#090A0F] cursor-pointer"
-              >
-                + Log Inbound Funding
-              </button>
-              <button 
-                onClick={() => message.info("Task action: Place Available Funds to Pool")}
-                className="px-2 py-1 border border-slate-800 text-[#9CA3AF] hover:bg-[#1F2937] font-semibold bg-[#090A0F] cursor-pointer"
-              >
-                → Allocate Investment
-              </button>
-            </div> */}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* REGISTRATION OVERLAY MODAL CONTAINER DIALOG */}
-      <AnimatePresence>
+     <AnimatePresence mode="wait">
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div

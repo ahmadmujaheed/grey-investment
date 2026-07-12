@@ -5,7 +5,13 @@ import apiClient from "./apiClient";
  * @returns {Promise<Object>} Processed dashboard payload mapping complete DB states
  */
 export const fetchDashboardAnalytics = async () => {
-  const response = await apiClient.get("/analytics/dashboard-summary");
+  const response = await apiClient.get("/analytics/admin/dashboard");
+  // console.log(response);
+  return response.data;
+};
+
+export const fetchDashboardAnalyticsChart = async () => {
+  const response = await apiClient.get("/analytics/admin/dashboard/charts");
   console.log(response);
   return response.data;
 };
@@ -15,7 +21,7 @@ export const fetchDashboardAnalytics = async () => {
  * @returns {Promise<Object>} Tailored metric payload with personal capital entries
  */
 export const fetchInvestorAnalytics = async () => {
-  const response = await apiClient.get("/analytics/my-summary");
+  const response = await apiClient.get("/analytics/dashboard");
   // console.log(response)
   return response.data;
 };

@@ -20,7 +20,14 @@ import {
 import { message, Skeleton } from "antd";
 
 // 🔌 Connects directly to your analytics API layer
-import { fetchDashboardAnalytics } from "../api/analyticsApi";
+import {
+  fetchDashboardAnalytics,
+  fetchDashboardAnalyticsChart,
+} from "../api/analyticsApi";
+import DashboardCards from "../components/DashboardCards";
+import DashboardChart from "../components/DashboardChart";
+import TransactionHistory from "../components/TransactionHistory";
+import RecentInvestments from "../components/RecentInvestments";
 
 // Motion animation presets
 const fadeInUp = {
@@ -121,6 +128,7 @@ const Dashboard = () => {
     loadSystemAnalytics();
   }, []);
 
+  console.log("Fetched Dashboard Analytics:", analyticsData);
   // 💀 Skeleton Loader View (Perfect Dark Theme Matching)
   if (loading) {
     return (
@@ -224,212 +232,19 @@ const Dashboard = () => {
       </motion.div>
 
       {/* 1. Core Financial Metrics */}
-      <motion.div
-        variants={staggerContainer}
-        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-      >
-        {/* Card 1 */}
-        <motion.div
-          variants={fadeInUp}
-          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
-        >
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Total Invested Capital
-            </span>
-
-            <h3
-              className="text-2xl font-bold text-white"
-              title={new Intl.NumberFormat("en-NG", {
-                style: "currency",
-                currency: "NGN",
-              }).format(totalCapital)}
-            >
-              {formatNaira(totalCapital)}
-            </h3>
-
-            <span className="text-xs font-semibold text-[#34D399] flex items-center gap-1">
-              <TrendingUp size={12} />
-              Capital currently under management
-            </span>
-          </div>
-          <div className="w-11 h-11 bg-[#090A0F] text-[#34D399] rounded-lg flex items-center justify-center font-bold text-xl">
-            ₦
-          </div>
-        </motion.div>
-
-        {/* Card 2 */}
-        <motion.div
-          variants={fadeInUp}
-          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
-        >
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Estimated Investor Payout
-            </span>
-            <h3
-              className="text-2xl font-bold text-white"
-              title={new Intl.NumberFormat("en-NG", {
-                style: "currency",
-                currency: "NGN",
-              }).format(totalPaidOut)}
-            >
-              {formatNaira(totalPaidOut)}
-            </h3>
-
-            <span className="text-xs text-[#9CA3AF] block">
-              Aggregated yield allocations in tracking matrix
-            </span>
-          </div>
-          <div className="p-3 bg-[#090A0F] text-[#34D399] rounded-lg">
-            <Percent size={20} />
-          </div>
-        </motion.div>
-
-        {/* Card 3 */}
-        <motion.div
-          variants={fadeInUp}
-          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
-        >
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Company Management Cut
-            </span>
-            <h3
-              className="text-2xl font-bold text-white"
-              title={new Intl.NumberFormat("en-NG", {
-                style: "currency",
-                currency: "NGN",
-              }).format(companyRevenue)}
-            >
-              {formatNaira(companyRevenue)}
-            </h3>
-
-            <span className="text-xs text-[#9CA3AF] block">
-              Revenue earned by Grey Investment
-            </span>
-          </div>
-          <div className="p-3 bg-[#090A0F] text-[#9CA3AF] rounded-lg">
-            <Building size={20} />
-          </div>
-        </motion.div>
-
-        {/* TCard 5 */}
-        <motion.div
-          variants={fadeInUp}
-          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
-        >
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Total System Profit
-            </span>
-
-            <h3
-              className="text-2xl font-bold text-white"
-              title={new Intl.NumberFormat("en-NG", {
-                style: "currency",
-                currency: "NGN",
-              }).format(summary.totalSystemProfit)}
-            >
-              {formatNaira(summary.totalSystemProfit)}
-            </h3>
-
-            <span className="text-xs text-[#9CA3AF] block">
-              Profit generated from all investments
-            </span>
-          </div>
-
-          <div className="p-3 bg-[#090A0F] text-emerald-400 rounded-lg">
-            <TrendingUp size={20} />
-          </div>
-        </motion.div>
-
-        {/* Card 5 */}
-        <motion.div
-          variants={fadeInUp}
-          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex items-center justify-between"
-        >
-          <div className="space-y-1">
-            <span className="text-xs font-medium text-[#9CA3AF] uppercase tracking-wider block">
-              Registered Investors
-            </span>
-
-            <h3 className="text-2xl font-bold text-blue-400">
-              {summary.totalRegisteredUsers}
-            </h3>
-
-            <span className="text-xs text-[#9CA3AF] block">
-              Active users on Grey Investment
-            </span>
-          </div>
-
-          <div className="p-3 bg-[#090A0F] text-blue-400 rounded-lg">
-            <Users size={20} />
-          </div>
-        </motion.div>
-      </motion.div>
+      <DashboardCards cards={analyticsData?.cards} loading={loading} />
 
       {/* 2. Main Analytics & Interactive Split Calculator */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Simple Bar Chart Layout */}
+        {/* Left - Chart */}
+        <div className="lg:col-span-2">
+          <DashboardChart />
+        </div>
+
+        {/* Right - Calculator */}
         <motion.div
           variants={fadeInUp}
-          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] space-y-4 lg:col-span-2"
-        >
-          <div>
-            <h3 className="font-bold text-white text-base">
-              Monthly Profit Distribution Flow
-            </h3>
-            <p className="text-xs text-[#9CA3AF]">
-              Comparing gross capital gains against your personal 45% payout.
-            </p>
-          </div>
-
-          <div className="h-64 w-full">
-            {charts.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-slate-500 font-mono text-xs">
-                No monthly historical investment inflows generated yet.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="#2D3748"
-                    vertical={false}
-                  />
-                  <XAxis dataKey="name" stroke="#6B7280" tickLine={false} />
-                  <YAxis stroke="#6B7280" tickFormatter={formatAxisValues} />
-
-                  <Tooltip
-                    cursor={false}
-                    formatter={(value) => [formatNaira(value)]}
-                    contentStyle={{
-                      backgroundColor: "#1F2937", // Matches your card background
-                      borderColor: "#374151", // Slate-700 for a subtle border
-                      borderRadius: "8px",
-                      color: "#F3F4F6", // Light text color
-                    }}
-                  />
-
-                  <Bar
-                    dataKey="amount"
-                    fill="#34D399"
-                    radius={[8, 8, 0, 0]}
-                    barSize={30}
-                    // 2. Add an activeBar prop to customize or remove the hover highlight on the bar itself
-                    activeBar={{ fill: "#10B981" }}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </motion.div>
-
-        {/* Dynamic Interactive Split Tool Card */}
-        <motion.div
-          variants={fadeInUp}
-          className="p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex flex-col justify-between"
+          className="lg:col-span-1 p-5 border border-slate-800 rounded-xl bg-[#1F2937] flex flex-col justify-between"
         >
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-white">
@@ -447,13 +262,14 @@ const Dashboard = () => {
               inputMode="numeric"
               value={calcAmount}
               onChange={handleAmountChange}
-              className="w-full px-3 py-2 bg-[#090A0F] border border-slate-700  text-white"
+              className="w-full px-3 py-2 bg-[#090A0F] border border-slate-700 text-white rounded"
               placeholder="Enter Profit Amount"
             />
 
             <div className="flex gap-4">
               <div className="flex-1">
                 <label className="text-[10px] text-slate-400">Investor %</label>
+
                 <input
                   type="number"
                   value={investorPct}
@@ -461,8 +277,10 @@ const Dashboard = () => {
                   className="w-full bg-[#090A0F] border border-slate-700 p-2 text-white rounded"
                 />
               </div>
+
               <div className="flex-1">
                 <label className="text-[10px] text-slate-400">Company %</label>
+
                 <input
                   disabled
                   value={companyPct}
@@ -474,27 +292,35 @@ const Dashboard = () => {
             <div className="bg-[#090A0F] p-4 rounded-lg space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">Investor Payout:</span>
+
                 <span className="font-bold text-[#34D399]">
                   {formatNaira(investorPayout)}
                 </span>
               </div>
+
               <div className="flex justify-between text-xs">
                 <span className="text-slate-400">Company Fee:</span>
+
                 <span className="font-bold text-slate-300">
                   {formatNaira(companyFee)}
                 </span>
               </div>
             </div>
           </div>
-
-          {/* <button className="w-full mt-4 py-2.5 border border-slate-700 hover:border-[#3B82F6] hover:bg-[#090A0F] text-white font-semibold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 group">
-            Review Investment Policies
-            <ArrowUpRight
-              size={14}
-              className="text-[#9CA3AF] group-hover:text-white transition-colors"
-            />
-          </button> */}
         </motion.div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+          <TransactionHistory
+            transactions={analyticsData?.recentTransactions}
+            loading={loading}
+          />
+          
+          <RecentInvestments
+            investments={analyticsData?.recentInvestments}
+            loading={loading}
+          />
       </div>
     </motion.div>
   );

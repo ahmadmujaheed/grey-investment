@@ -68,7 +68,7 @@ const DashboardLayout = () => {
   }, [fetchRequests]);
 
   // 4. Calculate length
-  const pendingCount = requests.filter((r) => r.status === "pending").length;
+  // const pendingCount = requests.filter((r) => r.status === "pending").length;
 
   const menuItems = [
     {
@@ -90,7 +90,7 @@ const DashboardLayout = () => {
       label: "Requests",
       icon: Bell, 
       path: "/dashboard/requests",
-      count: pendingCount, 
+      // count: pendingCount, 
     },
     {
       id: "settings",

@@ -16,14 +16,14 @@ export const fetchUserWithdrawalHistory = async () => {
 
 // Admin: Get all requests
 export const fetchAllWithdrawalsApi = async () => {
-  const response = await apiClient.get("/withdrawals/all");
-  // console.log(response);
+  const response = await apiClient.get("/withdrawals");
+  console.log(response);
   return response.data;
 };
 
 // In api/withdrawalApi.js
 export const adminSetWithdrawalAmount = async (payload) => {
-  const response = await apiClient.post("/withdrawals/update-limit", payload);
+  const response = await apiClient.post("/withdrawals/allocation/withdrawable-limit", payload);
   // console.log("Response from server:", response);
   return response.data;
 };

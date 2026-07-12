@@ -20,16 +20,15 @@ import { FaRegEdit } from "react-icons/fa";
 import {
   fetchAllInvestments,
   createInvestment,
-  allocateInvestorToPool,
   distributeInvestmentProfits,
   archiveInvestmentPackage,
   fetchAllUsers,
   fetchArchivedInvestments,
   restoreInvestmentPackage,
-  removeUserFromPool,
   editInvestment,
   updateInvestmentStatus,
 } from "../api/investmentApi";
+import { Link } from "react-router-dom";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 15 },
@@ -41,7 +40,7 @@ const Investment = () => {
   const [packages, setPackages] = useState([]);
   const [users, setUsers] = useState([]); // 👥 Stores platform users registry
   const [loading, setLoading] = useState(true);
-  const [allocate, setAllocate] = useState(false);
+
   const [distribute, setDistribute] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -97,7 +96,8 @@ const Investment = () => {
 
       // FIX: If your API returns { data: [...] }, use response.data
       // If it returns the array directly, keep as is.
-      setPackages(Array.isArray(response) ? response : response.data);
+      // setPackages(Array.isArray(response) ? response : response?.investments || []);
+      setPackages(response?.investments || []);
     } catch (error) {
       message.error("Failed to load investment package configurations.");
     } finally {
@@ -105,34 +105,14 @@ const Investment = () => {
     }
   };
 
-  console.log(selectedPackage, "this is the investment");
+  // console.log(packages, "this is the investment");
 
-  // Fetch all registered users to populate the allocation dropdown matrix
-  const loadPlatformUsers = async () => {
-    try {
-      setUsersLoading(true);
-      const data = await fetchAllUsers();
-      setUsers(data);
-    } catch (error) {
-      console.error("Failed to pool application user index records:", error);
-    } finally {
-      setUsersLoading(false);
-    }
-  };
+ 
 
-  const handleUserSelect = async (userId) => {
-    setTargetUserId(userId);
-    if (userId) {
-      const data = await fetchUserProfit(userId);
-      setAvailableProfit(data.totalProfit);
-    }
-  };
-
-  console.log(users);
+  // console.log(users);
 
   useEffect(() => {
     loadPlatformAssets(true);
-    loadPlatformUsers();
   }, []);
 
   // Ant Design Custom Dragger Pipeline Configurer
@@ -197,13 +177,13 @@ const Investment = () => {
   };
 
   // 3. DELETE: Deletes an asset package completely
-  const handleArchivePackage = async (packageId) => {
+  const handleArchivePackage = async (investmentId) => {
     try {
       setLoading(true);
-      await archiveInvestmentPackage(packageId);
+      await archiveInvestmentPackage(investmentId);
       message.warning("Investment package tier removed from platform catalog.");
 
-      if (selectedPackage && selectedPackage._id === packageId) {
+      if (selectedPackage && selectedPackage._id === investmentId) {
         setSelectedPackage(null);
       }
       await loadPlatformAssets(true);
@@ -214,217 +194,15 @@ const Investment = () => {
     }
   };
 
-  // 4. LINK ALLOCATION: Binds structural capital allocation values to user profiles
-  // const handleAddInvestor = async (e) => {
-  //   e.preventDefault();
-  //   setAllocate(true);
-  //   if (!targetUserId || !newInvestorAmount) {
-  //     message.error(
-  //       "Please pick a target platform member and set an injection amount.",
-  //     );
-  //     return;
-  //   }
-
-  //   try {
-  //     // ⚡ Optimistic Local Update: Don't flip the root loading skeleton back on
-  //     const data = await allocateInvestorToPool(selectedPackage._id, {
-  //       user: targetUserId,
-  //       amount: newInvestorAmount,
-  //     });
-
-  //     message.success("Investor allocation bound to pool roster successfully!");
-
-  //     // Update inline workspace state directly using populated data from payload response
-  //     setSelectedPackage(data.package);
-
-  //     // Synced update to background packages matrix without resetting views
-  //     setPackages((prev) =>
-  //       prev.map((p) => (p._id === data.package._id ? data.package : p)),
-  //     );
-
-  //     setTargetUserId(undefined);
-  //     setNewInvestorAmount("");
-  //   } catch (error) {
-  //     message.error(
-  //       error.response?.data?.message ||
-  //         "Error assigning stakeholder parameters to pool instance.",
-  //     );
-  //   } finally {
-  //     setAllocate(false);
-  //   }
-  // };
-
-  // const handleAddInvestor = async (e) => {
-  //   e.preventDefault();
-  //   if (selectedSource === "profit" && newInvestorAmount > availableProfit) {
-  //     return message.error("Insufficient profit available.");
-  //   }
-
-  //   setAllocate(true);
-  //   try {
-  //     await allocateInvestorToPool(selectedPackage._id, {
-  //       userId: targetUserId,
-  //       amount: newInvestorAmount,
-  //       isReinvestment: selectedSource === "profit",
-  //     });
-  //     message.success("Allocation successful!");
-  //   } catch (err) {
-  //     message.error("Allocation failed.");
-  //   } finally {
-  //     setAllocate(false);
-  //   }
-  // };
   
-//   const handleAddInvestor = async (e) => {
-//   e.preventDefault();
-  
-//   const payload = {
-//     userId: targetUserId, // Ensure this key matches your Backend
-//     amount: parseFloat(newInvestorAmount),
-//     isReinvestment: selectedSource === "profit",
-//   };
-
-//   console.log("DEBUG: Frontend Payload sending to server:", payload);
-  
-//   setAllocate(true);
-//   try {
-//     const result = await allocateInvestorToPool(selectedPackage._id, payload);
-//     console.log("DEBUG: Server Response:", result);
-//     message.success("Allocation successful!");
-//   } catch (err) {
-//     console.error("DEBUG: Frontend Error Response:", err.response?.data);
-//     message.error(err.response?.data?.message || "Allocation failed.");
-//   } finally {
-//     setAllocate(false);
-//   }
-// };
-
-// const handleAddInvestor = async (e) => {
-//     e.preventDefault();
-    
-//     const payload = {
-//       userId: targetUserId,
-//       amount: parseFloat(newInvestorAmount),
-//       isReinvestment: selectedSource === "profit",
-//     };
-
-//     setAllocate(true);
-//     try {
-//       await allocateInvestorToPool(selectedPackage._id, payload);
-//       message.success("Allocation successful!");
-
-//       // 1. CLEAR FORM FIELDS
-//       setTargetUserId(undefined);
-//       setNewInvestorAmount("");
-      
-//       // 2. REFRESH DATA WITHOUT RELOAD
-//       // This re-fetches the list of investments and updates the local state
-//       await loadPlatformAssets(); 
-      
-//       // 3. UPDATE THE SELECTED PACKAGE VIEW
-//       // Since we just fetched the list, let's find the updated version of our current package
-//       const updatedPackage = await fetchAllInvestments(); // Or fetch just this one if your API supports it
-//       const currentPkg = updatedPackage.find(p => p._id === selectedPackage._id);
-//       setSelectedPackage(currentPkg);
-
-//     } catch (err) {
-//       console.error("Allocation failed:", err);
-//       message.error(err.response?.data?.message || "Allocation failed.");
-//     } finally {
-//       setAllocate(false);
-//     }
-//   };
-
-// const handleAddInvestor = async (e) => {
-//   e.preventDefault();
-  
-//   const payload = {
-//     userId: targetUserId,
-//     amount: parseFloat(newInvestorAmount),
-//     isReinvestment: selectedSource === "profit",
-//   };
-  
-//   setAllocate(true);
-//   try {
-//     const result = await allocateInvestorToPool(selectedPackage._id, payload);
-    
-//     // 1. SUCCESS: Update the UI with the latest data from the server response
-//     // result.package contains the updated totalAmount and the new investor list
-//     setSelectedPackage(result.package); 
-    
-//     // 2. CLEAR FORM FIELDS
-//     setTargetUserId(undefined);
-//     setNewInvestorAmount("");
-    
-//     // 3. RESET SOURCE TOGGLE TO DEFAULT
-//     setSelectedSource("capital"); 
-    
-//     message.success("Allocation successful!");
-//   } catch (err) {
-//     console.error("Allocation failed:", err);
-//     message.error(err.response?.data?.message || "Allocation failed.");
-//   } finally {
-//     setAllocate(false);
-//   }
-// };
-
-
-const handleAddInvestor = async (e) => {
-    e.preventDefault();
-    
-    const payload = {
-      userId: targetUserId,
-      amount: parseFloat(newInvestorAmount),
-      isReinvestment: selectedSource === "profit",
-    };
-
-    setAllocate(true);
-    try {
-      const result = await allocateInvestorToPool(selectedPackage._id, payload);
-      
-      // 1. Get the full user object from your local 'users' registry
-      const userData = users.find(u => u.id === targetUserId);
-
-      // 2. Create the populated investor object
-      const newInvestor = {
-        user: {
-          _id: targetUserId,
-          name: userData?.name || "Unknown",
-          email: userData?.email || "No email"
-        },
-        amount: parseFloat(newInvestorAmount),
-        profitCollected: 0 // Default value
-      };
-
-      // 3. Manually update the state to include the populated object
-      setSelectedPackage(prev => ({
-        ...prev,
-        ...result.package, // Take the updated totalAmount/etc from server
-        investors: [...prev.investors, newInvestor] // Add our populated object
-      }));
-
-      message.success("Allocation successful!");
-      
-      // Reset form
-      setTargetUserId(undefined);
-      setNewInvestorAmount("");
-      setSelectedSource("capital");
-      
-    } catch (err) {
-      console.error("Allocation failed:", err);
-      message.error(err.response?.data?.message || "Allocation failed.");
-    } finally {
-      setAllocate(false);
-    }
-  };
 
   const getArchivedInvestments = async () => {
     try {
       setGettingArchived(true);
       const response = await fetchArchivedInvestments();
       // Ensure we always set an array
-      setPackages(Array.isArray(response) ? response : response.data || []);
-      setInvestmentStatus("archived");
+      setPackages(response?.investments || []);
+      // setInvestmentStatus("archived");
     } catch (error) {
       message.error("Failed to load archived investment packages.");
     } finally {
@@ -437,8 +215,8 @@ const handleAddInvestor = async (e) => {
       setGettingActive(true);
       const response = await fetchAllInvestments();
       // Ensure we always set an array
-      setPackages(Array.isArray(response) ? response : response.data || []);
-      setInvestmentStatus("active");
+      setPackages(response?.investments || []);
+      // setInvestmentStatus("active");
     } catch (error) {
       message.error("Failed to load active investment packages.");
     } finally {
@@ -446,91 +224,7 @@ const handleAddInvestor = async (e) => {
     }
   };
 
-  // 5. DISTRIBUTE: Triggers equity splits and ends funding cycle
-
-  const handleDistributeProfit = async (e) => {
-    e.preventDefault();
-    setDistribute(true);
-    try {
-      const response = await distributeInvestmentProfits(selectedPackage._id, {
-        totalProfit: inputProfitAmount,
-        companyShare: companyPercent,
-        investorShare: investorPercent,
-      });
-
-      // Update your local state so the table re-renders instantly
-      setSelectedPackage(response.updatedPackage);
-      message.success("Profit distribution and roster updated!");
-      // setIsDistributeOpen(false);
-    } catch (error) {
-      message.error("Failed to update roster");
-    } finally {
-      setDistribute(false);
-    }
-  };
-
-  const removeInvestor = async (userId) => {
-    try {
-      setIsRemoving(true);
-
-      // 1. Perform the API call
-      await removeUserFromPool(selectedPackage._id, userId);
-      message.success("Investor removed successfully!");
-
-      // 2. Derive the new state locally immediately
-      // Filter the investor out from the current local array
-      const updatedInvestors = selectedPackage.investors.filter(
-        (inv) => inv.user._id !== userId,
-      );
-
-      // Calculate the new totalAmount based on the remaining investors
-      const newTotalAmount = updatedInvestors.reduce(
-        (sum, inv) => sum + (Number(inv.amount) || 0),
-        0,
-      );
-
-      // 3. Update the "selectedPackage" state
-      // This triggers an instant re-render of the modal/panel
-      setSelectedPackage((prev) => ({
-        ...prev,
-        investors: updatedInvestors,
-        totalAmount: newTotalAmount,
-      }));
-
-      // 4. Update the "packages" list (The main grid)
-      // This ensures the main dashboard reflects the change without a reload
-      setPackages((prev) =>
-        prev.map((p) =>
-          p._id === selectedPackage._id
-            ? { ...p, investors: updatedInvestors, totalAmount: newTotalAmount }
-            : p,
-        ),
-      );
-    } catch (error) {
-      message.error("Failed to remove investor.");
-      console.error(error);
-    } finally {
-      setIsRemoving(false);
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "active":
-        return "green";
-      case "pending":
-        return "orange";
-      case "paused":
-        return "volcano"; // A distinct red-orange for paused
-      case "completed":
-        return "blue";
-      case "archived":
-        return "default";
-      default:
-        return "default";
-    }
-  };
-
+ 
   const handleStatusChange = async (newStatus) => {
     try {
       setLoading(true);
@@ -551,8 +245,7 @@ const handleAddInvestor = async (e) => {
   return (
     <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF]">
       {/* CASE A: ROOT GALLERY GRID INTERFACE VIEW */}
-      {!selectedPackage ? (
-        <>
+  
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">
@@ -614,7 +307,7 @@ const handleAddInvestor = async (e) => {
                 </div>
               ))}
             </div>
-          ) : packages.length === 0 ? (
+          ) : packages?.length === 0 ? (
             <div className="text-center py-12 border border-dashed border-slate-800 bg-[#1F2937]/30">
               <p className="text-sm italic text-[#9CA3AF]">
                 No archived investment packages yet.
@@ -622,20 +315,20 @@ const handleAddInvestor = async (e) => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {packages.map((pkg) => (
+              {packages?.map((pkg) => (
                 <motion.div
                   key={pkg._id}
                   variants={fadeInUp}
                   initial="hidden"
                   animate="visible"
-                  onClick={() => setSelectedPackage(pkg)}
+                  // onClick={() => setSelectedPackage(pkg)}
                   className="group cursor-pointer border border-slate-800 rounded-none overflow-hidden bg-[#1F2937] hover:border-[#34D399]/60 transition-all flex flex-col justify-between relative"
                 >
                   <div>
                     <div className="h-40 w-full overflow-hidden bg-[#090A0F] relative rounded-none">
                       <img
                         src={
-                          pkg.image ||
+                          pkg.image?.url ||
                           "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400&auto=format&fit=crop&q=60"
                         }
                         alt={pkg.title}
@@ -670,9 +363,6 @@ const handleAddInvestor = async (e) => {
                               </button>
                             </Popconfirm>
 
-                            {/* <span className="text-xs font-mono bg-[#1F2937] text-[#9CA3AF] px-2 py-1 uppercase tracking-wider border border-slate-800">
-        Asset ID: #{pkg._id}
-      </span> */}
                           </div>
                         )}
                       </div>
@@ -702,7 +392,7 @@ const handleAddInvestor = async (e) => {
                           <span>
                             Pool Active Size:{" "}
                             <strong className="text-white">
-                              ₦{pkg.totalAmount?.toLocaleString() || 0}
+                              ₦{pkg.totalAllocated?.toLocaleString() || 0}
                             </strong>
                           </span>
                         </div>
@@ -722,7 +412,7 @@ const handleAddInvestor = async (e) => {
                           <span>
                             Active Investors:{" "}
                             <strong className="text-white">
-                              {pkg.investors?.length || 0} members
+                              {pkg.investorCount || 0} members
                             </strong>
                           </span>
                         </div>
@@ -731,507 +421,18 @@ const handleAddInvestor = async (e) => {
                   </div>
 
                   <div className="p-4 pt-0">
-                    <div className="w-full text-center py-2 bg-[#090A0F] rounded-none text-xs font-bold text-[#9CA3AF] group-hover:bg-[#34D399] group-hover:text-[#090A0F] transition-colors">
-                      View Roster & Audit
-                    </div>
+                    <Link to={`/dashboard/investment/${pkg?._id}`}>
+                      <div className="w-full text-center py-2 bg-[#090A0F] rounded-none text-xs font-bold text-[#9CA3AF] group-hover:bg-[#34D399] group-hover:text-[#090A0F] transition-colors">
+                        View Roster & Audit
+                      </div>
+                    </Link>
                   </div>
                 </motion.div>
               ))}
             </div>
           )}
-        </>
-      ) : (
-        /* CASE B: INLINE DETAILED WORKSPACE VIEW */
-        <motion.div
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-6"
-        >
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-            <button
-              onClick={() => setSelectedPackage(null)}
-              className="inline-flex items-center gap-2 text-[#9CA3AF] hover:text-white text-sm font-semibold transition-colors cursor-pointer"
-            >
-              <ArrowLeft size={16} />
-              <span>Back to Packages</span>
-            </button>
-
-            {selectedPackage.status !== "archived" && (
-              <div className="flex items-center gap-3">
-                <Popconfirm
-                  title="Archive Investment Package"
-                  description="Are you absolutely sure you want to archive this investment package?"
-                  onConfirm={() => handleArchivePackage(selectedPackage._id)}
-                  okText="Yes, Archive"
-                  cancelText="Cancel"
-                  placement="bottomRight"
-                  okButtonProps={{
-                    danger: true,
-                    className:
-                      "bg-rose-600 hover:bg-rose-500 rounded-none text-xs font-semibold",
-                  }}
-                  cancelButtonProps={{
-                    className:
-                      "border-slate-700 text-slate-300 hover:text-white rounded-none text-xs",
-                  }}
-                >
-                  <button className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 transition-colors cursor-pointer">
-                    <HiOutlineArchiveBoxArrowDown size={13} />
-                    Archive Package
-                  </button>
-                </Popconfirm>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Use selectedPackage instead of pkg
-                    openEditModal(selectedPackage);
-                  }}
-                  className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 transition-colors cursor-pointer"
-                >
-                  <FaRegEdit size={13} />
-                  Edit Package
-                </button>
-              </div>
-            )}
-          </div>
-
-          {loading && packages.length === 0 ? (
-            <div className="p-6 border border-slate-800 bg-[#1F2937]">
-              <Skeleton active paragraph={{ rows: 6 }} />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-              {/* Left Column Ledger Layout Output */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="border border-slate-800 bg-[#1F2937] rounded-none overflow-hidden">
-                  <div className="h-56 w-full bg-[#090A0F] relative">
-                    <Tag
-                      color={getStatusColor(selectedPackage.status)}
-                      className="absolute! top-2 right-2 px-3 py-1 font-semibold uppercase"
-                    >
-                      {selectedPackage.status}
-                    </Tag>
-                    <img
-                      src={
-                        selectedPackage.image ||
-                        "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400&auto=format&fit=crop&q=60"
-                      }
-                      alt=""
-                      className="w-full h-full object-cover rounded-none"
-                    />
-                  </div>
-                  <div className="p-6 space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        {/* <span className="text-[10px] font-bold uppercase tracking-wider text-[#34D399] bg-[#090A0F] px-2 py-0.5 rounded-none border border-slate-800">
-                          Lifecycle Status Context Matrix:{" "}
-                          {selectedPackage.status}
-                        </span> */}
-                        <h2 className="text-2xl font-bold text-white mt-1 capitalize">
-                          {selectedPackage.title}
-                        </h2>
-                      </div>
-                      {/* Dedicated Status Change Dropdown */}
-                      <Select
-                        disabled={selectedPackage.status === "completed"}
-                        value={selectedPackage.status} // Controlled by state
-                        onChange={(value) =>
-                          handleStatusChange(value, selectedPackage._id)
-                        }
-                        className="w-40"
-                        dropdownStyle={{ backgroundColor: "#090A0F" }}
-                        options={[
-                          "pending",
-                          "active",
-                          "paused",
-                          "completed",
-                        ].map((status) => ({
-                          value: status,
-                          label:
-                            status.charAt(0).toUpperCase() + status.slice(1),
-                        }))}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4 border-t border-slate-800 pt-4 text-xs font-semibold">
-                      <div>
-                        <span className="text-[#9CA3AF] block">
-                          Target Cap Ceiling Bar
-                        </span>
-                        <span className="text-xl font-bold text-blue-400">
-                          ₦{selectedPackage.targetAmount?.toLocaleString() || 0}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span className="text-[#9CA3AF] block">
-                          Current Capital Asset Base
-                        </span>
-                        <span className="text-xl font-bold text-[#34D399]">
-                          ₦{selectedPackage.totalAmount.toLocaleString()}
-                        </span>
-                      </div>
-                      {/* <div>
-                        <span className="text-[#9CA3AF] block">
-                          Current Capital Asset Base
-                        </span>
-                        <span className="text-xl font-bold text-[#34D399]">
-                          ₦
-                          {(
-                            selectedPackage.totalAmount -
-                            selectedPackage.investors.reduce(
-                              (sum, inv) => sum + (inv.profitCollected || 0),
-                              0,
-                            )
-                          ).toLocaleString()}
-                        </span>
-                      </div> */}
-
-                      <div>
-                        <span className="text-[#9CA3AF] block">
-                          Stakeholder Headcount
-                        </span>
-                        <span className="text-xl font-bold text-white">
-                          {selectedPackage.investors?.length || 0} Members
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stakeholders Ledger Grid Node Output */}
-                <div className="border border-slate-800 bg-[#1F2937] rounded-none overflow-hidden">
-                  <div className="p-6 border-b border-slate-800">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                      Top Pool Stakeholders Roster
-                    </h3>
-                  </div>
-
-                  {/* Table Header */}
-                  <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-[#090A0F]/50 text-[10px] font-bold uppercase tracking-widest text-[#9CA3AF] border-b border-slate-800">
-                    <div
-                      className={
-                        selectedPackage.status !== "completed"
-                          ? "col-span-4"
-                          : "col-span-6"
-                      }
-                    >
-                      User Details
-                    </div>
-                    <div className="col-span-2 text-right">Invested</div>
-                    <div className="col-span-2 text-right">Profit</div>
-                    <div className="col-span-2 text-right">Total</div>
-                    {selectedPackage.status !== "completed" && (
-                      <div className="col-span-2 text-right">Actions</div>
-                    )}
-                  </div>
-
-                  {!selectedPackage.investors ||
-                  selectedPackage.investors.length === 0 ? (
-                    <p className="p-6 text-xs text-[#9CA3AF] italic">
-                      No stakeholders mapped to this pool yet.
-                    </p>
-                  ) : (
-                    <div className="divide-y divide-slate-800 max-h-96 overflow-y-auto">
-                      {selectedPackage.investors.map((inv, idx) => {
-                        const profit = inv.profitCollected || 0;
-                        const principal = inv.amount - profit;
-
-                        return (
-                          <div
-                            key={inv._id || idx}
-                            className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-[#111827] transition-colors"
-                          >
-                            {/* Dynamic User Details */}
-                            <div
-                              className={`${selectedPackage.status !== "completed" ? "col-span-4" : "col-span-6"} flex items-center gap-3`}
-                            >
-                              <div className="w-8 h-8 rounded-full bg-[#090A0F] text-[#34D399] font-bold flex items-center justify-center text-sm shrink-0">
-                                {inv.user?.name?.charAt(0) || "U"}
-                              </div>
-                              <div className="truncate">
-                                <p className="text-xs font-bold text-white truncate">
-                                  {inv.user?.name || "Unknown"}
-                                </p>
-                                <p className="text-[10px] text-[#9CA3AF] truncate">
-                                  {inv.user?.email || "No email"}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Financial Columns */}
-                            <div className="col-span-2 text-right text-xs font-mono font-bold text-white">
-                              {/* ₦{principal.toLocaleString()} */}₦
-                              {inv.amount.toLocaleString()}
-                            </div>
-                            <div className="col-span-2 text-right text-xs font-mono font-bold text-[#34D399]">
-                              ₦{profit.toLocaleString()}
-                            </div>
-                            <div className="col-span-2 text-right text-xs font-mono font-bold text-blue-400">
-                              ₦{(inv.amount + profit).toLocaleString()}
-                            </div>
-
-                            {/* Actions: Conditionally Rendered */}
-                            {selectedPackage.status !== "completed" && (
-                              <div className="col-span-2 text-right">
-                                <Popconfirm
-                                  title="Remove Investor"
-                                  onConfirm={() => removeInvestor(inv.user._id)}
-                                  okText="Remove"
-                                  okButtonProps={{
-                                    danger: true,
-                                    className: "text-xs",
-                                  }}
-                                >
-                                  <button className="text-[10px] text-rose-500 hover:text-rose-400 font-bold uppercase cursor-pointer">
-                                    Remove
-                                  </button>
-                                </Popconfirm>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Side Control Panel Column Actions */}
-              <div className="space-y-6">
-                {/* PANEL: Yield Distribution Execution Block */}
-                <div className="border border-slate-800 bg-[#1F2937] p-5 space-y-4 rounded-none">
-                  <div className="flex items-center gap-2 text-white">
-                    <Coins size={18} className="text-[#34D399]" />
-                    <h3 className="font-bold text-base">
-                      Distribute Pool Profit
-                    </h3>
-                  </div>
-
-                  <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                    Set the profit amount and define the percentage split
-                    between corporate margins and investors.
-                  </p>
-
-                  <form
-                    onSubmit={handleDistributeProfit}
-                    className="space-y-4 text-xs"
-                  >
-                    {/* Total Profit */}
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-[#9CA3AF] block">
-                        Total Profit Earned (₦)
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        disabled={selectedPackage.status === "completed"}
-                        value={inputProfitAmount}
-                        onChange={(e) => setInputProfitAmount(e.target.value)}
-                        placeholder="e.g. 1000000"
-                        className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6] transition-all disabled:opacity-40"
-                      />
-                    </div>
-
-                    {/* Percentage Inputs */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="font-bold text-[#9CA3AF] block">
-                          Company %
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          disabled={selectedPackage.status === "completed"}
-                          value={companyPercent}
-                          onChange={(e) => setCompanyPercent(e.target.value)}
-                          className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6]"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="font-bold text-[#9CA3AF] block">
-                          Investor %
-                        </label>
-                        <input
-                          type="number"
-                          required
-                          disabled={selectedPackage.status === "completed"}
-                          value={investorPercent}
-                          onChange={(e) => setInvestorPercent(e.target.value)}
-                          className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Live Validation & Calculation */}
-                    {parseFloat(inputProfitAmount) > 0 && (
-                      <div className="bg-[#090A0F] border border-slate-800 p-3 space-y-2 font-medium text-[11px] text-[#9CA3AF]">
-                        <div className="flex justify-between border-b border-slate-800 pb-1.5">
-                          <span>Company Cut ({companyPercent || 0}%):</span>
-                          <strong className="text-white font-mono">
-                            ₦
-                            {(
-                              parseFloat(inputProfitAmount) *
-                              (parseFloat(companyPercent || 0) / 100)
-                            ).toLocaleString()}
-                          </strong>
-                        </div>
-                        <div className="flex justify-between pt-0.5 text-[#34D399]">
-                          <span>
-                            Investors Split Pool ({investorPercent || 0}%):
-                          </span>
-                          <strong className="font-mono">
-                            ₦
-                            {(
-                              parseFloat(inputProfitAmount) *
-                              (parseFloat(investorPercent || 0) / 100)
-                            ).toLocaleString()}
-                          </strong>
-                        </div>
-
-                        {/* Sum Validator */}
-                        {parseFloat(companyPercent) +
-                          parseFloat(investorPercent) !==
-                          100 && (
-                          <p className="text-rose-500 font-bold pt-1">
-                            Error: Percentages must equal 100% (Current:{" "}
-                            {parseFloat(companyPercent || 0) +
-                              parseFloat(investorPercent || 0)}
-                            %)
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    <button
-                      type="submit"
-                      disabled={
-                        selectedPackage.status === "completed" ||
-                        distribute ||
-                        parseFloat(companyPercent) +
-                          parseFloat(investorPercent) !==
-                          100
-                      }
-                      className="w-full py-2.5 bg-[#3B82F6] hover:bg-blue-600 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-sm rounded-none transition-colors mt-2 cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      {distribute
-                        ? "Processing..."
-                        : "Execute Distribution Breakdown"}
-                    </button>
-                  </form>
-                </div>
-
-                {/* PANEL: Allocation Engine Node Form */}
-                <div className="border border-slate-800 bg-[#1F2937] p-5 space-y-4 rounded-none">
-                  <div className="flex items-center gap-2 text-white">
-                    <UserPlus size={18} className="text-[#34D399]" />
-                    <h3 className="font-bold text-base">Add User to Pool</h3>
-                  </div>
-
-                  <p className="text-xs text-[#9CA3AF] leading-relaxed">
-                    Allocate capital or reinvest user profit into this active
-                    asset pool.
-                  </p>
-
-                  <form
-                    onSubmit={handleAddInvestor}
-                    className="space-y-4 text-xs"
-                  >
-                    {/* 1. Select Member */}
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-[#9CA3AF] block">
-                        Select Platform Member
-                      </label>
-                      <Select
-                        showSearch
-                        loading={usersLoading}
-                        placeholder="Search by name or email..."
-                        optionFilterProp="label"
-                        value={targetUserId}
-                        onChange={(value) => {
-                          setTargetUserId(value);
-                          // Use the correct property 'totalProfit' instead of 'profitCollected'
-                          const user = users.find((u) => u.id === value);
-                          setAvailableProfit(user?.totalProfit || 0); // Corrected here
-                        }}
-                        className="w-full h-9 rounded-none"
-                        options={users.map((user) => ({
-                          value: user.id,
-                          label: `${user.name || "Unnamed"} (${user.email || "No email"})`,
-                        }))}
-                      />
-                    </div>
-
-                    {/* 2. Source Toggle */}
-                    <div className="grid grid-cols-2 gap-1 bg-[#090A0F] p-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSource("capital")}
-                        className={`py-1.5 text-[10px] font-bold transition-all ${selectedSource === "capital" ? "bg-slate-800 text-white" : "text-[#9CA3AF]"}`}
-                      >
-                        FRESH CAPITAL
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSource("profit")}
-                        className={`py-1.5 text-[10px] font-bold transition-all ${selectedSource === "profit" ? "bg-[#34D399] text-[#090A0F]" : "text-[#9CA3AF]"}`}
-                      >
-                        FROM PROFIT
-                      </button>
-                    </div>
-
-                    {/* 3. Dynamic Profit Display */}
-                    {selectedSource === "profit" && (
-                      <div className="flex justify-between items-center px-3 py-2 bg-[#090A0F] border border-[#34D399]/20">
-                        <span className="text-[10px] text-[#9CA3AF] uppercase">
-                          Available to Reinvest
-                        </span>
-                        <span className="text-sm font-mono font-bold text-[#34D399]">
-                          ₦{availableProfit.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* 4. Amount Input */}
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-[#9CA3AF] block">
-                        {selectedSource === "profit"
-                          ? "Amount to Reinvest (₦)"
-                          : "Injected Capital (₦)"}
-                      </label>
-                      <input
-                        type="number"
-                        required
-                        value={newInvestorAmount}
-                        onChange={(e) => setNewInvestorAmount(e.target.value)}
-                        placeholder={
-                          selectedSource === "profit"
-                            ? `Max ₦${availableProfit}`
-                            : "e.g. 500000"
-                        }
-                        className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#34D399] transition-all"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={
-                        allocate ||
-                        selectedPackage.status === "completed" ||
-                        selectedPackage.status === "archived"
-                      }
-                      className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm rounded-none transition-colors mt-2"
-                    >
-                      {allocate ? "Allocating..." : "Confirm Allocation"}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </div>
-          )}
-        </motion.div>
-      )}
+    
+  
 
       {/* CREATE/EDIT PACKAGE MODAL OVERLAY */}
       {isCreateOpen && (

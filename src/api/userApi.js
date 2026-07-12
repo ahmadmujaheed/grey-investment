@@ -3,14 +3,14 @@ import apiClient from "./apiClient";
 // 👥 1. Fetch All Registered Platform Users with Aggregated Metrics
 export const fetchAllUsers = async () => {
   const response = await apiClient.get("/users");
-  console.log(response)
+  // console.log(response);
   return response.data;
 };
 
 // 👤 2. Fetch Single User Profile Workspace Node by ID
 export const fetchUserById = async (userId) => {
   const response = await apiClient.get(`/users/${userId}`);
-  console.log(response)
+  // console.log(response)
   return response.data;
 };
 
@@ -25,14 +25,19 @@ export const provisionNewUser = async (userData) => {
 // 🔒 4. Change Password (First Login or Standard Security Update)
 export const updateUserPassword = async (passwordPayload) => {
   // passwordPayload structure: { currentPassword, newPassword }
-  const response = await apiClient.put("/users/change-password", passwordPayload);
+  const response = await apiClient.put(
+    "/users/change-password",
+    passwordPayload,
+  );
   return response.data;
 };
 
 // Inside ../api/userApi.js
-export const resetUserPassword = async (userId) => {
-  // Ensure this matches the route defined in your authRoutes.js
-  const response = await apiClient.put(`/auth/reset-password/${userId}`);
-  console.log(response)
+export const resetUserPassword = async (payload) => {
+  const response = await apiClient.put(
+    "/auth/reset-password",
+    payload
+  );
+
   return response.data;
 };

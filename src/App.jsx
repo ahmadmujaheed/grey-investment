@@ -19,59 +19,62 @@ import Profile from "./pages/Profile";
 import UserDashboard from "./pages/investor/Dashboard";
 import UserSettings from "./pages/investor/Settings";
 import UserProfile from "./pages/investor/Profile";
-import UserInvestment from "./pages/investor/Investments"
-
+import UserInvestment from "./pages/investor/Investments";
+import InvestmentDetails from "./pages/investor/InvestmentDetails";
 
 import ScrollToTop from "./components/ScrollToTop";
 
-
 // Security Component
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminInvestmentDetails from "./components/AdminInvestmentDetails";
 
 const App = () => {
   return (
     <>
-    <ScrollToTop />
-    <Routes>
-      {/* 🔓 Public Entry Route */}
-      <Route path="/" element={<Login />} />
+      <ScrollToTop />
+      <Routes>
+        {/* 🔓 Public Entry Route */}
+        <Route path="/" element={<Login />} />
 
-      {/* 🛡️ ADMIN ONLY BRANCH */}
-      <Route element={<ProtectedRoute allowedRole="admin" />}>
-        <Route path="/dashboard" element={<DashboardLayout />}>
-          <Route path="" element={<Dashboard />} />
-          <Route path="investment" element={<Investment />} />
-          <Route path="users" element={<Users />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="requests" element={<Request />} />
-
+        {/* 🛡️ ADMIN ONLY BRANCH */}
+        <Route element={<ProtectedRoute allowedRole="admin" />}>
+          <Route path="/dashboard" element={<DashboardLayout />}>
+            <Route path="" element={<Dashboard />} />
+            <Route path="investment" element={<Investment />} />
+            <Route path="investment/:id" element={<AdminInvestmentDetails />} />
+            <Route path="users" element={<Users />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="requests" element={<Request />} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* 📈 INVESTOR (USER) ONLY BRANCH */}
-      <Route element={<ProtectedRoute allowedRole="user" />}>
-        <Route path="/user-dashboard" element={<UserLayout />}>
-          <Route path="" element={<UserDashboard />} />
-          <Route path="user-investments" element={<UserInvestment />} />
-          <Route path="user-settings" element={<UserSettings />} />
-          <Route path="user-profile" element={<UserProfile />} />
+        {/* 📈 INVESTOR (USER) ONLY BRANCH */}
+        <Route element={<ProtectedRoute allowedRole="user" />}>
+          <Route path="/user-dashboard" element={<UserLayout />}>
+            <Route path="user-investments/investment/:id" element={<InvestmentDetails />} />
+            <Route path="" element={<UserDashboard />} />
+            <Route path="user-investments" element={<UserInvestment />} />
+            <Route path="user-settings" element={<UserSettings />} />
+            <Route path="user-profile" element={<UserProfile />} />
+          </Route>
         </Route>
-      </Route>
 
-      {/* 🚫 Fallback/Catch-All Route for unauthorized attempts or 404s */}
-      <Route 
-        path="*" 
-        element={
-          <div className="min-h-screen bg-[#1F1F1F] text-white flex items-center justify-center font-sans">
-            <div className="text-center space-y-2">
-              <h1 className="text-4xl font-black text-rose-500">404</h1>
-              <p className="text-sm text-slate-400">Page Not Found or Access Unauthorized</p>
+        {/* 🚫 Fallback/Catch-All Route for unauthorized attempts or 404s */}
+        <Route
+          path="*"
+          element={
+            <div className="min-h-screen bg-[#1F1F1F] text-white flex items-center justify-center font-sans">
+              <div className="text-center space-y-2">
+                <h1 className="text-4xl font-black text-rose-500">404</h1>
+                <p className="text-sm text-slate-400">
+                  Page Not Found or Access Unauthorized
+                </p>
+              </div>
             </div>
-          </div>
-        } 
-      />
-    </Routes>
+          }
+        />
+      </Routes>
     </>
   );
 };
