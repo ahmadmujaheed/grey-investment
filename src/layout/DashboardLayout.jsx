@@ -12,7 +12,7 @@ import {
 import { Badge } from "antd";
 import { motion, AnimatePresence } from "motion/react";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
-
+import { fetchAllWithdrawalsApi } from "../api/withdrawalApi"
 // 🔌 Hook into your Zustand Auth Store
 import { useAuthStore } from "../store/useAuthStore";
 import { useRequestStore } from "../store/useRequestStore";
@@ -27,6 +27,7 @@ const DashboardLayout = () => {
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [allRequests, setAllRequests] = useState([]);
 
   // Helper function to extract user name initials for the avatar
   const getUserInitials = () => {
@@ -59,13 +60,28 @@ const DashboardLayout = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const requests = useRequestStore((state) => state.requests);
-  const fetchRequests = useRequestStore((state) => state.fetchRequests);
+    const loadData = async () => {
+    try {
+      const response = await fetchAllWithdrawalsApi();
+      setAllRequests(response?.requests || []);
+    } catch (error) {
+      console.error(
+        "Fetch withdrawals error:",
+        error?.response?.data || error.message,
+      );
+      message.error("Failed to load withdrawal requests.");
+      setAllRequests([]);
+    }
+  };
 
-  // 3. Fetch data on mount
   useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
+    loadData();
+  }, []);
+
+   const pendingData = allRequests.filter(
+    (request) => request.status === "pending",
+  );
+
 
   // 4. Calculate length
   // const pendingCount = requests.filter((r) => r.status === "pending").length;
@@ -90,7 +106,7 @@ const DashboardLayout = () => {
       label: "Requests",
       icon: Bell, 
       path: "/dashboard/requests",
-      // count: pendingCount, 
+      count: pendingData?.length, 
     },
     {
       id: "settings",

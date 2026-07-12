@@ -15,7 +15,7 @@ export const fetchUserById = async (userId) => {
 };
 
 // 🆕 3. Provision a New Investor Profile
-export const provisionNewUser = async (userData) => {
+export const createUser = async (userData) => {
   // userData structure: { name, email, phone }
   const response = await apiClient.post("/users", userData);
   // console.log(response);
@@ -36,6 +36,15 @@ export const updateUserPassword = async (passwordPayload) => {
 export const resetUserPassword = async (payload) => {
   const response = await apiClient.put(
     "/auth/reset-password",
+    payload
+  );
+
+  return response.data;
+};
+
+export const updateUser = async (payload) => {
+  const response = await apiClient.patch(
+    "/users/update",
     payload
   );
 

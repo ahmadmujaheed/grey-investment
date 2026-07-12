@@ -17,7 +17,7 @@ export const fetchUserWithdrawalHistory = async () => {
 // Admin: Get all requests
 export const fetchAllWithdrawalsApi = async () => {
   const response = await apiClient.get("/withdrawals");
-  console.log(response);
+  // console.log(response);
   return response.data;
 };
 
@@ -30,5 +30,12 @@ export const adminSetWithdrawalAmount = async (payload) => {
 
 
 // Admin: Approve/Reject
-export const approveWithdrawalApi = (id) => apiClient.patch(`/withdrawals/approve/${id}`);
-export const rejectWithdrawalApi = (id) => apiClient.patch(`/withdrawals/reject/${id}`);
+export const approveWithdrawalApi = (requestId) =>
+  apiClient.patch("/withdrawals/approve", {
+    requestId,
+  });
+
+export const rejectWithdrawalApi = (requestId) =>
+  apiClient.patch("/withdrawals/reject", {
+    requestId,
+  });

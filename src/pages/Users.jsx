@@ -16,8 +16,9 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   fetchAllUsers,
   fetchUserById,
-  provisionNewUser,
+  createUser,
   resetUserPassword,
+  updateUser,
 } from "../api/userApi";
 
 const formatCurrency = (amount = 0) =>
@@ -70,12 +71,15 @@ const Users = () => {
 
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserPhone, setNewUserPhone] = useState("");
 
   const [isUserDetailsModalOpen, setIsUserDetailsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
-   const [isModalOpen, setIsModalOpen] = useState(false);
+  // const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const isEditing = editingUser !== null;
 
   const loadUsersData = async () => {
     try {
@@ -123,60 +127,124 @@ const Users = () => {
     setSelectedUser(null);
   };
 
-  const handleCreateUser = async (event) => {
-    event.preventDefault();
+  // const handleCreateUser = async (event) => {
+  //   event.preventDefault();
 
-    if (!newUserName || !newUserEmail || !newUserPhone) {
-      message.warning("Please complete all registration fields.");
-      return;
-    }
+  //   if (!newUserName || !newUserEmail || !newUserPhone || !newUserPassword) {
+  //     message.warning("Please complete all registration fields.");
+  //     return;
+  //   }
+
+  //   try {
+  //     setIsSubmitting(true);
+
+  //     await createUser({
+  //       name: newUserName,
+  //       email: newUserEmail,
+  //       phone: newUserPhone,
+  //       password: newUserPassword,
+  //     });
+
+  //     message.success("New investor registered successfully.");
+
+  //     setNewUserName("");
+  //     setNewUserEmail("");
+  //     setNewUserPhone("");
+  //     setNewUserPassword("");
+  //     setIsCreateModalOpen(false);
+
+  //     await loadUsersData();
+  //   } catch (error) {
+  //     console.error(error);
+
+  //     message.error(
+  //       error?.response?.data?.message || "Failed to register investor.",
+  //     );
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
+
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
 
     try {
       setIsSubmitting(true);
 
-      await provisionNewUser({
-        name: newUserName,
-        email: newUserEmail,
-        phone: newUserPhone,
-      });
+      if (editingUser) {
+        await updateUser({
+          userId: editingUser._id,
+          name: newUserName,
+          email: newUserEmail,
+          phone: newUserPhone,
+        });
 
-      message.success("New investor registered successfully.");
+        message.success("User updated successfully.");
+      } else {
+        await createUser({
+          name: newUserName,
+          email: newUserEmail,
+          phone: newUserPhone,
+          password: newUserPassword,
+        });
+
+        message.success("New investor registered successfully.");
+      }
+
+      setEditingUser(null);
 
       setNewUserName("");
       setNewUserEmail("");
       setNewUserPhone("");
+      setNewUserPassword("");
+
       setIsCreateModalOpen(false);
 
       await loadUsersData();
     } catch (error) {
-      console.error(error);
-
       message.error(
-        error?.response?.data?.message || "Failed to register investor.",
+        error?.response?.data?.message ||
+          (editingUser
+            ? "Failed to update user."
+            : "Failed to register investor."),
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const editUser = () => {
+    setEditingUser(selectedUser);
+
+    setNewUserName(selectedUser.name || "");
+    setNewUserEmail(selectedUser.email || "");
+    setNewUserPhone(selectedUser.phone || "");
+
+    // Don't populate password
+    setNewUserPassword("");
+
+    setIsUserDetailsModalOpen(false);
+    setIsCreateModalOpen(true);
+  };
+
   const handleResetPassword = async () => {
-  const userId = selectedUser?._id || selectedUser?.id;
+    const userId = selectedUser?._id || selectedUser?.id;
 
-  if (!userId) {
-    message.error("User ID is missing.");
-    return;
-  }
+    if (!userId) {
+      message.error("User ID is missing.");
+      return;
+    }
 
-  try {
-    await resetUserPassword({ userId });
+    try {
+      await resetUserPassword({ userId });
 
-    message.success("Password reset successfully.");
-  } catch (error) {
-    message.error(
-      error?.response?.data?.message || "Failed to reset password."
-    );
-  }
-};
+      message.success("Password reset successfully.");
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to reset password.",
+      );
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
@@ -227,7 +295,16 @@ const Users = () => {
         </div>
 
         <button
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={() => {
+            setEditingUser(null);
+
+            setNewUserName("");
+            setNewUserEmail("");
+            setNewUserPhone("");
+            setNewUserPassword("");
+
+            setIsCreateModalOpen(true);
+          }}
           className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 transition-colors cursor-pointer"
         >
           <UserPlus size={16} />
@@ -389,211 +466,224 @@ const Users = () => {
         </table>
       </div>
 
-      {isUserDetailsModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            onClick={closeUserDetailsModal}
-            className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-xs"
-          />
+      <AnimatePresence mode="wait">
+        {isUserDetailsModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              onClick={closeUserDetailsModal}
+              className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-xs"
+            />
 
-          <div className="relative z-10 w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-slate-800 bg-[#1F2937] p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <div>
-                <h3 className="font-bold text-base text-white">
-                  Investor Profile Details
-                </h3>
-                <p className="mt-0.5 text-xs text-[#9CA3AF]">
-                  Review investor details and all investment allocations.
-                </p>
+            <div className="relative z-10 w-full max-w-5xl max-h-[90vh] overflow-y-auto border border-slate-800 bg-[#1F2937] p-6 space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="font-bold text-base text-white">
+                    Investor Profile Details
+                  </h3>
+                  <p className="mt-0.5 text-xs text-[#9CA3AF]">
+                    Review investor details and all investment allocations.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeUserDetailsModal}
+                  className="text-[#9CA3AF] hover:text-white font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={closeUserDetailsModal}
-                className="text-[#9CA3AF] hover:text-white font-bold text-sm cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
+              {detailsLoading ? (
+                <div className="py-12 text-center text-sm text-[#9CA3AF]">
+                  Loading investor information...
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#090A0F] border border-slate-800 p-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-11 h-11 shrink-0 rounded-full bg-[#1F2937] border border-slate-700 text-[#34D399] flex items-center justify-center text-lg font-bold">
+                        {selectedUser?.name?.charAt(0)?.toUpperCase() || "U"}
+                      </div>
 
-            {detailsLoading ? (
-              <div className="py-12 text-center text-sm text-[#9CA3AF]">
-                Loading investor information...
-              </div>
-            ) : (
-              <>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[#090A0F] border border-slate-800 p-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-11 h-11 shrink-0 rounded-full bg-[#1F2937] border border-slate-700 text-[#34D399] flex items-center justify-center text-lg font-bold">
-                      {selectedUser?.name?.charAt(0)?.toUpperCase() || "U"}
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-white capitalize">
+                          {selectedUser?.name || "Unknown user"}
+                        </h3>
+                        <p className="truncate text-xs text-[#9CA3AF]">
+                          {selectedUser?.email || "No email"}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-white capitalize">
-                        {selectedUser?.name || "Unknown user"}
-                      </h3>
-                      <p className="truncate text-xs text-[#9CA3AF]">
-                        {selectedUser?.email || "No email"}
+                    <div className="flex items-center gap-2">
+                      <Tag
+                        color={
+                          selectedUser?.role === "admin" ? "blue" : "green"
+                        }
+                        className="m-0 uppercase font-bold"
+                      >
+                        {selectedUser?.role || "user"}
+                      </Tag>
+
+                      <Popconfirm
+                        title="Reset user password?"
+                        description="The password will be reset to the default password."
+                        okText="Reset"
+                        cancelText="Cancel"
+                        onConfirm={handleResetPassword}
+                      >
+                        <button className="px-3 py-1.5 border border-rose-500/40 bg-rose-950/20 text-[10px] font-bold uppercase text-rose-400 hover:bg-rose-950/40 cursor-pointer">
+                          Reset Password
+                        </button>
+                      </Popconfirm>
+
+                      <button
+                        onClick={() => editUser()}
+                        className="px-3 py-1.5 border border-green-500/40 bg-green-950/20 text-[10px] font-bold uppercase text-gren-400 hover:bg-green-950/40 cursor-pointer"
+                      >
+                        Edit User
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="border border-slate-800 bg-[#090A0F] p-3">
+                      <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
+                        Phone Number
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-white">
+                        {selectedUser?.phone || "—"}
+                      </p>
+                    </div>
+
+                    <div className="border border-slate-800 bg-[#090A0F] p-3">
+                      <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
+                        Withdrawable Balance
+                      </p>
+                      <p className="mt-1 text-sm font-mono font-bold text-[#34D399]">
+                        {formatCurrency(selectedUser?.withdrawableLimit)}
+                      </p>
+                    </div>
+
+                    <div className="border border-slate-800 bg-[#090A0F] p-3">
+                      <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
+                        Registered
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-white">
+                        {formatDate(selectedUser?.createdAt)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Tag
-                      color={selectedUser?.role === "admin" ? "blue" : "green"}
-                      className="m-0 uppercase font-bold"
-                    >
-                      {selectedUser?.role || "user"}
-                    </Tag>
+                  <div className="border border-slate-800 overflow-x-auto">
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#090A0F] border-b border-slate-800">
+                      <h4 className="text-xs uppercase font-bold text-white">
+                        Investment Allocations
+                      </h4>
 
-                    <Popconfirm
-                      title="Reset user password?"
-                      description="The password will be reset to the default password."
-                      okText="Reset"
-                      cancelText="Cancel"
-                      onConfirm={handleResetPassword}
-                    >
-                      <button className="px-3 py-1.5 border border-rose-500/40 bg-rose-950/20 text-[10px] font-bold uppercase text-rose-400 hover:bg-rose-950/40 cursor-pointer">
-                        Reset Password
-                      </button>
-                    </Popconfirm>
-                  </div>
-                </div>
+                      <span className="text-xs text-[#9CA3AF]">
+                        {selectedUser?.allocations?.length || 0} allocation(s)
+                      </span>
+                    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="border border-slate-800 bg-[#090A0F] p-3">
-                    <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
-                      Phone Number
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">
-                      {selectedUser?.phone || "—"}
-                    </p>
-                  </div>
-
-                  <div className="border border-slate-800 bg-[#090A0F] p-3">
-                    <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
-                      Withdrawable Balance
-                    </p>
-                    <p className="mt-1 text-sm font-mono font-bold text-[#34D399]">
-                      {formatCurrency(selectedUser?.withdrawableLimit)}
-                    </p>
-                  </div>
-
-                  <div className="border border-slate-800 bg-[#090A0F] p-3">
-                    <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
-                      Registered
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white">
-                      {formatDate(selectedUser?.createdAt)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border border-slate-800 overflow-x-auto">
-                  <div className="flex items-center justify-between px-4 py-3 bg-[#090A0F] border-b border-slate-800">
-                    <h4 className="text-xs uppercase font-bold text-white">
-                      Investment Allocations
-                    </h4>
-
-                    <span className="text-xs text-[#9CA3AF]">
-                      {selectedUser?.allocations?.length || 0} allocation(s)
-                    </span>
-                  </div>
-
-                  <table className="min-w-[900px] w-full text-left text-xs">
-                    <thead className="bg-[#1F2937] text-[10px] uppercase text-[#9CA3AF]">
-                      <tr>
-                        <th className="px-4 py-3">Investment</th>
-                        <th className="px-4 py-3 text-right">Principal</th>
-                        <th className="px-4 py-3 text-right">Profit</th>
-                        <th className="px-4 py-3 text-right">Total Value</th>
-                        <th className="px-4 py-3 text-right">Limit</th>
-                        <th className="px-4 py-3 text-right">
-                          Available Balance
-                        </th>
-                        <th className="px-4 py-3 text-right">
-                          Reinvest
-                        </th>
-                        <th className="px-4 py-3 text-right">Status</th>
-                      </tr>
-                    </thead>
-
-                    <tbody className="divide-y divide-slate-800">
-                      {(selectedUser?.allocations || []).length === 0 ? (
+                    <table className="min-w-[900px] w-full text-left text-xs">
+                      <thead className="bg-[#1F2937] text-[10px] uppercase text-[#9CA3AF]">
                         <tr>
-                          <td
-                            colSpan={7}
-                            className="px-4 py-8 text-center text-[#9CA3AF]"
-                          >
-                            This user has no investment allocations.
-                          </td>
+                          <th className="px-4 py-3">Investment</th>
+                          <th className="px-4 py-3 text-right">Principal</th>
+                          <th className="px-4 py-3 text-right">Profit</th>
+                          <th className="px-4 py-3 text-right">Total Value</th>
+                          <th className="px-4 py-3 text-right">Limit</th>
+                          <th className="px-4 py-3 text-right">
+                            Available Balance
+                          </th>
+                          <th className="px-4 py-3 text-right">Reinvest</th>
+                          <th className="px-4 py-3 text-right">Status</th>
                         </tr>
-                      ) : (
-                        selectedUser.allocations.map((allocation) => (
-                          <tr
-                            key={allocation._id || allocation.id}
-                            className="bg-[#1F2937] hover:bg-[#111827]"
-                          >
-                            <td className="px-4 py-3">
-                              <p className="font-bold text-white capitalize!">
-                                {allocation.investment?.title ||
-                                  "Unknown investment"}
-                              </p>
-                              <p className="mt-0.5 text-[10px] text-[#9CA3AF]">
-                                {allocation.investment?.reference ||
-                                  "No reference"}
-                              </p>
-                            </td>
+                      </thead>
 
-                            <td className="px-4 py-3 text-right font-mono text-white">
-                              {formatCurrency(allocation.principal)}
-                            </td>
-
-                            <td className="px-4 py-3 text-right font-mono text-[#34D399]">
-                              {formatCurrency(allocation.profitEarned)}
-                            </td>
-
-                            <td className="px-4 py-3 text-right font-mono text-blue-400">
-                              {formatCurrency(
-                                allocation.totalValue ??
-                                  Number(allocation.principal || 0) +
-                                    Number(allocation.profitEarned || 0),
-                              )}
-                            </td>
-
-                            <td className="px-4 py-3 text-right font-mono text-amber-400">
-                              {formatCurrency(allocation.withdrawableLimit)}
-                            </td>
-
-                            <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">
-                              {formatCurrency(getAvailableBalance(allocation))}
-                            </td>
-                            <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">
-                              {formatCurrency(allocation?.amountReinvested || 0)}
-                            </td>
-
-                            <td className="px-4 py-3 text-right">
-                              <Tag
-                                color={getStatusColor(allocation.status)}
-                                className="m-0 text-[10px] uppercase"
-                              >
-                                {allocation?.investment?.status || "unknown"}
-                              </Tag>
+                      <tbody className="divide-y divide-slate-800">
+                        {(selectedUser?.allocations || []).length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={7}
+                              className="px-4 py-8 text-center text-[#9CA3AF]"
+                            >
+                              This user has no investment allocations.
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+                        ) : (
+                          selectedUser.allocations.map((allocation) => (
+                            <tr
+                              key={allocation._id || allocation.id}
+                              className="bg-[#1F2937] hover:bg-[#111827]"
+                            >
+                              <td className="px-4 py-3">
+                                <p className="font-bold text-white capitalize!">
+                                  {allocation.investment?.title ||
+                                    "Unknown investment"}
+                                </p>
+                                <p className="mt-0.5 text-[10px] text-[#9CA3AF]">
+                                  {allocation.investment?.reference ||
+                                    "No reference"}
+                                </p>
+                              </td>
 
-     <AnimatePresence mode="wait">
-        {isModalOpen && (
+                              <td className="px-4 py-3 text-right font-mono text-white">
+                                {formatCurrency(allocation.principal)}
+                              </td>
+
+                              <td className="px-4 py-3 text-right font-mono text-[#34D399]">
+                                {formatCurrency(allocation.profitEarned)}
+                              </td>
+
+                              <td className="px-4 py-3 text-right font-mono text-blue-400">
+                                {formatCurrency(
+                                  allocation.totalValue ??
+                                    Number(allocation.principal || 0) +
+                                      Number(allocation.profitEarned || 0),
+                                )}
+                              </td>
+
+                              <td className="px-4 py-3 text-right font-mono text-amber-400">
+                                {formatCurrency(allocation.withdrawableLimit)}
+                              </td>
+
+                              <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">
+                                {formatCurrency(
+                                  getAvailableBalance(allocation),
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">
+                                {formatCurrency(
+                                  allocation?.amountReinvested || 0,
+                                )}
+                              </td>
+
+                              <td className="px-4 py-3 text-right">
+                                <Tag
+                                  color={getStatusColor(allocation.status)}
+                                  className="m-0 text-[10px] uppercase"
+                                >
+                                  {allocation?.investment?.status || "unknown"}
+                                </Tag>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait">
+        {isCreateModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
@@ -613,10 +703,12 @@ const Users = () => {
               <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2 text-white">
                   <UserPlus size={18} className="text-[#34D399]" />
-                  <h3 className="font-bold text-base">Register Profile</h3>
+                  <h3 className="font-bold text-base">
+                    {editingUser ? "Edit Profile" : "Register Profile"}
+                  </h3>
                 </div>
                 <button
-                  onClick={() => !isSubmitting && setIsModalOpen(false)}
+                  onClick={() => !isSubmitting && setIsCreateModalOpen(false)}
                   disabled={isSubmitting}
                   className="text-[#9CA3AF] hover:text-white font-bold text-sm disabled:opacity-30 cursor-pointer"
                 >
@@ -660,6 +752,24 @@ const Users = () => {
                   />
                 </div>
 
+                {!editingUser && (
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-[#9CA3AF] block">
+                      Password
+                    </label>
+
+                    <input
+                      type="text"
+                      required
+                      disabled={isSubmitting}
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                      placeholder="Add Password"
+                      className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6]"
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="font-bold text-[#9CA3AF] block">
                     Phone Number
@@ -679,7 +789,10 @@ const Users = () => {
                   <button
                     type="button"
                     disabled={isSubmitting}
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={() => {
+                      setEditingUser(null);
+                      setIsCreateModalOpen(false);
+                    }}
                     className="w-1/3 py-2.5 border border-slate-800 hover:bg-[#090A0F] text-[#9CA3AF] font-bold text-sm rounded-none transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     Cancel
@@ -689,7 +802,13 @@ const Users = () => {
                     disabled={isSubmitting}
                     className="flex-1 py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] disabled:cursor-not-allowed font-bold text-sm rounded-none transition-colors cursor-pointer"
                   >
-                    {isSubmitting ? "Provisioning..." : "Provision Profile"}
+                    {isSubmitting
+                      ? editingUser
+                        ? "Updating..."
+                        : "Provisioning..."
+                      : editingUser
+                        ? "Update Profile"
+                        : "Provision Profile"}
                   </button>
                 </div>
               </form>
