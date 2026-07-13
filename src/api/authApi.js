@@ -33,7 +33,7 @@ export const getUserProfile = async () => {
  */
 export const updateUserPassword = async (passwordData) => {
   const response = await apiClient.put(
-    "/users/change-password",
+    "/auth/change-password",
     passwordData,
     { withCredentials: true },
   );

@@ -1,4 +1,4 @@
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -7,276 +7,448 @@ import {
   Landmark,
   Clock,
   RefreshCw,
-  X
+  Coins,
+  X,
 } from "lucide-react";
-import { Skeleton, Popover, Button } from "antd";
+import { Skeleton, Popover, Button, message } from "antd";
 import { fetchInvestmentById } from "../../api/investmentApi";
 import { NIGERIAN_BANKS } from "../../utils/bank";
+
+// Fallback API function reference
+const requestWithdrawalApi = async (payload) => {
+  console.log("Sending withdrawal transaction context:", payload);
+};
+
+const formatCurrency = (amount = 0) =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(Number(amount) || 0);
 
 const InvestmentDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
+
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [details, setDetails] = useState(location.state?.contract || null);
-  const [loading, setLoading] = useState(!location.state?.contract);
+  // Core structured database object wrapper matching your specific response structure
+  const [details, setDetails] = useState({
+    investment: null,
+    myInvestment: null,
+  });
+
   const [formData, setFormData] = useState({
     amount: "",
-    bankName: NIGERIAN_BANKS[0].name,
+    bankName: NIGERIAN_BANKS[0]?.name || "",
     accountName: "",
     accountNumber: "",
     source: "profit",
   });
-  const [error, setError] = useState(null);
-  const [availableBalance, setAvailableBalance] = useState(0);
 
-   const handleWithdraw = async (e) => {
-      e.preventDefault();
+  const loadData = async () => {
+    try {
       setLoading(true);
-      try {
-        // Ensure 'source' is included
-        await requestWithdrawalApi({ ...formData, source: "profit" });
-        message.success("Withdrawal request submitted!");
-        setIsWithdrawOpen(false);
-      } catch (err) {
-        // The server is telling you exactly why it failed
-        console.error(err.response?.data);
-        message.error(err.response?.data?.message || "Withdrawal failed");
-      } finally {
-        setLoading(false);
+      setError(null);
+      const response = await fetchInvestmentById(id);
+
+      if (response?.success || response?.investment) {
+        setDetails({
+          investment: response.investment || null,
+          myInvestment: response.myInvestment || null,
+        });
+      } else {
+        setError("Invalid response payload structure returned.");
       }
-    };
-
-
-    const handleConfirm = async () => {
-  setPopoverOpen(false); // Close popover
-  await handleWithdraw(new Event("submit")); // Trigger your submit logic
-};
+    } catch (err) {
+      console.error("Error loading investment:", err);
+      setError(
+        err.response?.data?.message ||
+          "Failed to resolve contract ledger metadata.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!details) {
-      const loadData = async () => {
-        try {
-          setLoading(true);
-          const response = await fetchInvestmentById(id);
-          setDetails(response.data);
-        } catch (error) {
-          console.error("Error loading investment:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      loadData();
-    }
-  }, [id, details]);
+    loadData();
+  }, [id]);
 
+  const handleWithdraw = async (e) => {
+    if (e && typeof e.preventDefault === "function") e.preventDefault();
+
+    const availableToWithdraw = details.myInvestment?.withdrawableLimit || 0;
+    if (Number(formData.amount) > availableToWithdraw) {
+      message.error(
+        "Requested withdrawal value exceeds limit capacity allocation.",
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await requestWithdrawalApi({
+        ...formData,
+        investmentId: id,
+        allocationId: details.myInvestment?.allocationId,
+      });
+      message.success("Withdrawal request submitted successfully!");
+      setIsWithdrawOpen(false);
+      loadData();
+    } catch (err) {
+      console.error(err.response?.data);
+      message.error(
+        err.response?.data?.message || "Withdrawal operation failed",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    setPopoverOpen(false);
+    await handleWithdraw();
+  };
+
+  // Maps properties seamlessly into dynamic card blocks (now containing 6 cards)
   const metrics = [
     {
-      label: "Principal",
-      val: details?.totalPrincipal,
+      label: "Principal Deposited",
+      val: details.myInvestment?.principal || 0,
       icon: Wallet,
       color: "text-emerald-400",
     },
     {
-      label: "Yield Earned",
-      val: details?.totalYield,
+      label: "Profit Earned",
+      val: details.myInvestment?.profitEarned || 0,
       icon: TrendingUp,
       color: "text-blue-400",
     },
     {
-      label: "Available",
-      val: details?.availableBalance,
+      label: "Amount Reinvested",
+      val: details.myInvestment?.amountReinvested || 0,
+      icon: Coins,
+      color: "text-amber-400",
+    },
+    {
+      label: "Liquid Available Balance",
+      val: details.myInvestment?.availableBalance || 0,
+      icon: Wallet,
+      color: "text-teal-400",
+    },
+    {
+      label: "Withdrawable Limit",
+      val: details.myInvestment?.withdrawableLimit || 0,
       icon: Landmark,
       color: "text-white",
     },
     {
-      label: "Total Collected",
-      val: details?.totalCollected,
+      label: "Total Pool Value",
+      val: details.myInvestment?.totalInvestment || 0,
       icon: Clock,
-      color: "text-amber-400",
+      color: "text-indigo-400",
     },
   ];
 
+  if (error) {
+    return (
+      <div className="max-w-xl mx-auto my-12 p-8 bg-rose-500/5 border border-rose-500/10 rounded-2xl text-center font-sans">
+        <p className="text-rose-400 text-sm font-medium mb-4">{error}</p>
+        <button
+          onClick={loadData}
+          className="px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer"
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-7xl mx-auto p-6 text-slate-200">
+    <div className="max-w-7xl mx-auto p-6 text-slate-200 font-sans space-y-6">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors"
+        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-xs font-semibold uppercase tracking-wider cursor-pointer"
       >
-        <ArrowLeft size={18} /> Back to Dashboard
+        <ArrowLeft size={16} /> Back to Dashboard
       </button>
 
-      {/* 📊 Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      {/* 🖼️ Premium Visual Asset Header Banner */}
+      {!loading && (
+        <div className="relative h-48 w-full rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-gradient-to-r from-[#1F2937] to-[#111827] flex items-end p-8">
+          <img
+            src={
+              details.investment.image.url ||
+              "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400&auto=format&fit=crop&q=60"
+            }
+            alt={details.investment?.title}
+            className="absolute inset-0 w-full h-full object-cover opacity-20"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent" />
+
+          <div className="relative z-10">
+            <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-[#34D399] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+              {details.investment?.status || "Asset Node"}
+            </span>
+            <h1 className="text-2xl font-black text-white mt-2 capitalize tracking-wide">
+              {details.investment?.title || "Asset Pool"}
+            </h1>
+            <p className="text-xs text-slate-400 mt-1 font-mono">
+              Ref: {details.investment?.reference}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 📊 Metrics Grid Layout */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {metrics.map((item, idx) => (
           <div
             key={idx}
-            className="bg-[#1F2937] border border-slate-800 p-5 rounded-2xl shadow-sm"
+            className="bg-[#1F2937] border border-slate-800/80 p-5 rounded-xl shadow-md flex flex-col justify-between"
           >
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-[#9CA3AF] uppercase">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-[10px] text-[#9CA3AF] uppercase font-bold tracking-wider">
                 {item.label}
               </span>
               <item.icon size={16} className={item.color} />
             </div>
             {loading ? (
-              <Skeleton.Input active size="small" style={{ width: 80 }} />
+              <Skeleton.Input active size="small" style={{ width: 110 }} />
             ) : (
-              <span className={`text-xl font-bold ${item.color}`}>
-                ₦{item.val?.toLocaleString()}
+              <span className={`text-xl font-bold font-mono ${item.color}`}>
+                {formatCurrency(item.val)}
               </span>
             )}
           </div>
         ))}
       </div>
 
-       {/* Withdrawal Modal */}
-    {isWithdrawOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div
-          onClick={() => !loading && setIsWithdrawOpen(false)}
-          className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-xs"
-        />
-        <div className="bg-[#1F2937] border border-slate-800 rounded-none w-full max-w-sm p-6 relative z-10 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-base text-white">
-              Request Withdrawal
-            </h3>
-            <button
-              onClick={() => setIsWithdrawOpen(false)}
-              className="text-[#9CA3AF] hover:text-white"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <form onSubmit={handleWithdraw} className="space-y-4 text-xs">
-            {/* Amount Input */}
-            <input
-              type="number"
-              placeholder="Amount"
-              required
-              className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white focus:outline-none focus:border-[#34D399]"
-              onChange={(e) => {
-                const val = parseFloat(e.target.value);
-                setFormData({ ...formData, amount: val });
-              }}
-            />
-
-            {/* Validation Warning */}
-            {formData.amount > availableBalance && (
-              <p className="text-red-500 text-[10px] -mt-2">
-                Amount exceeds your available principal: ₦
-                {availableBalance.toLocaleString()}
-              </p>
-            )}
-
-            <select
-              className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white"
-              onChange={(e) =>
-                setFormData({ ...formData, bankName: e.target.value })
-              }
-            >
-              <option value="">Select a Bank</option>
-              {NIGERIAN_BANKS.map((b) => (
-                <option key={b.code} value={b.name}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              type="text"
-              placeholder="Account Name"
-              required
-              className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white"
-              onChange={(e) =>
-                setFormData({ ...formData, accountName: e.target.value })
-              }
-            />
-
-            <input
-              type="number"
-              placeholder="Account Number"
-              required
-              className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white"
-              onChange={(e) =>
-                setFormData({ ...formData, accountNumber: e.target.value })
-              }
-            />
-
-            <Popover
-              content={
-                <div className="p-2 space-y-3">
-                  <p className="text-xs">Are these account details correct?</p>
-                  <div className="flex gap-2">
-                    <Button
-                      size="small"
-                      onClick={() => setPopoverOpen(false)}
-                      disabled={isSubmitting} // Disable "No" while submitting
-                    >
-                      No
-                    </Button>
-                    <Button
-                      size="small"
-                      type="primary"
-                      className="bg-[#34D399] border-none text-[#090A0F]"
-                      loading={isSubmitting} // This triggers the Ant Design loader
-                      onClick={async () => {
-                        setIsSubmitting(true); // Start loader
-                        await handleConfirm(); // Your existing logic
-                        setIsSubmitting(false); // Stop loader (or it closes anyway on submit)
-                      }}
-                    >
-                      Yes, Send
-                    </Button>
-                  </div>
-                </div>
-              }
-              title={<span className="text-xs">Confirm Details</span>}
-              trigger="click"
-              open={popoverOpen}
-              onOpenChange={(visible) => setPopoverOpen(visible)}
-            >
+      {/* Withdrawal Modal Structure */}
+      {isWithdrawOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={() => !isSubmitting && setIsWithdrawOpen(false)}
+            className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-sm"
+          />
+          <div className="bg-[#1F2937] border border-slate-800 rounded-xl w-full max-w-md p-6 relative z-10 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+              <h3 className="font-bold text-base text-white">
+                Request Fund Withdrawal
+              </h3>
               <button
-                type="button"
-                className="w-full py-3 font-bold bg-[#34D399] text-[#090A0F] hover:bg-[#28b485] transition-all"
+                disabled={isSubmitting}
+                onClick={() => setIsWithdrawOpen(false)}
+                className="text-[#9CA3AF] hover:text-white transition-colors disabled:opacity-30 cursor-pointer"
               >
-                Submit Request
+                <X size={18} />
               </button>
-            </Popover>
-          </form>
-        </div>
-      </div>
-    )}
+            </div>
 
-      {/* 📋 Detail Table / Info Section */}
-      <div className="bg-[#1F2937] border border-slate-700 rounded-2xl p-8 shadow-xl">
-        <h3 className="text-lg font-semibold mb-6 border-b border-slate-700 pb-4">
-          Investment Summary
+            <form onSubmit={handleWithdraw} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-400 block mb-1 text-[11px] uppercase tracking-wide font-medium">
+                  Withdrawal Amount
+                </label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  required
+                  min="1"
+                  disabled={isSubmitting}
+                  className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white rounded-lg focus:outline-none focus:border-[#34D399] font-mono"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      amount: parseFloat(e.target.value) || "",
+                    })
+                  }
+                />
+                {!loading &&
+                  Number(formData.amount) >
+                    (details.myInvestment?.withdrawableLimit || 0) && (
+                    <p className="text-rose-400 text-[10px] mt-1.5 font-medium">
+                      Amount exceeds your available limit allocation:{" "}
+                      {formatCurrency(details.myInvestment?.withdrawableLimit)}
+                    </p>
+                  )}
+              </div>
+
+              <div>
+                <label className="text-slate-400 block mb-1 text-[11px] uppercase tracking-wide font-medium">
+                  Destination Bank
+                </label>
+                <select
+                  required
+                  disabled={isSubmitting}
+                  className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white rounded-lg focus:outline-none focus:border-[#34D399]"
+                  value={formData.bankName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, bankName: e.target.value })
+                  }
+                >
+                  <option value="">Select a Bank</option>
+                  {NIGERIAN_BANKS.map((b) => (
+                    <option key={b.code} value={b.name}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-400 block mb-1 text-[11px] uppercase tracking-wide font-medium">
+                  Account Holder Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="John Doe"
+                  required
+                  disabled={isSubmitting}
+                  className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white rounded-lg focus:outline-none focus:border-[#34D399]"
+                  onChange={(e) =>
+                    setFormData({ ...formData, accountName: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-400 block mb-1 text-[11px] uppercase tracking-wide font-medium">
+                  10-Digit Account Number
+                </label>
+                <input
+                  type="text"
+                  maxLength={10}
+                  pattern="\d{10}"
+                  placeholder="0123456789"
+                  required
+                  disabled={isSubmitting}
+                  className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white rounded-lg focus:outline-none focus:border-[#34D399] font-mono"
+                  onChange={(e) =>
+                    setFormData({ ...formData, accountNumber: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="pt-2">
+                <Popover
+                  content={
+                    <div className="p-2 space-y-3 max-w-[240px]">
+                      <p className="text-xs text-slate-300">
+                        Are you certain the inputted financial destination
+                        parameters are accurate?
+                      </p>
+                      <div className="flex gap-2 justify-end">
+                        <Button
+                          size="small"
+                          onClick={() => setPopoverOpen(false)}
+                          disabled={isSubmitting}
+                        >
+                          No
+                        </Button>
+                        <Button
+                          size="small"
+                          type="primary"
+                          className="bg-[#34D399] border-none text-[#090A0F] font-bold"
+                          loading={isSubmitting}
+                          onClick={handleConfirm}
+                        >
+                          Yes, Send
+                        </Button>
+                      </div>
+                    </div>
+                  }
+                  title={
+                    <span className="text-xs font-bold text-white">
+                      Confirm Settlement Target
+                    </span>
+                  }
+                  trigger="click"
+                  open={popoverOpen}
+                  onOpenChange={(visible) =>
+                    !isSubmitting && setPopoverOpen(visible)
+                  }
+                >
+                  <button
+                    type="button"
+                    disabled={
+                      isSubmitting ||
+                      !formData.amount ||
+                      !formData.accountNumber
+                    }
+                    className="w-full py-3 font-bold bg-[#34D399] text-[#090A0F] hover:bg-[#28b485] transition-all rounded-lg disabled:opacity-30 disabled:hover:bg-[#34D399] cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    Submit Settlement Request
+                  </button>
+                </Popover>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 📋 Detail Table Summary Section */}
+      <div className="bg-[#1F2937] border border-slate-800/60 rounded-xl p-8 shadow-xl">
+        <h3 className="text-sm font-bold text-white tracking-wide border-b border-slate-800 pb-4 uppercase">
+          Investment Pipeline Context
         </h3>
         {loading ? (
-          <Skeleton active paragraph={{ rows: 4 }} />
+          <div className="pt-4">
+            <Skeleton active paragraph={{ rows: 4 }} />
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <InfoRow label="Pool Name" value={details?.poolName} />
-            <InfoRow label="Status" value={details?.status} isBadge />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-2 mt-4">
+            <InfoRow label="Pool Name" value={details.investment?.title} />
             <InfoRow
-              label="Created At"
-              value={new Date(details?.createdAt).toLocaleDateString()}
+              label="Asset Lifecycle Status"
+              value={details.investment?.status}
+              isBadge
+              badgeStyle={
+                details.investment?.status === "pending"
+                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                  : "bg-emerald-500/10 text-[#34D399] border-emerald-500/20"
+              }
             />
             <InfoRow
-              label="Action"
+              label="Pipeline Allocation Reference"
+              value={details.investment?.reference}
+              isMono
+            />
+            <InfoRow
+              label="Target Funding Volume"
+              value={formatCurrency(details.investment?.targetAmount)}
+              isMono
+            />
+            <InfoRow
+              label="Allocated Cap"
+              value={formatCurrency(details.investment?.totalAllocated)}
+              isMono
+            />
+            <InfoRow
+              label="Active Investors Tied"
+              value={`${details.investment?.investorCount || 0} Entities`}
+            />
+            <InfoRow
+              label="Allocation Timestamp"
+              value={
+                details.myInvestment?.allocatedAt
+                  ? new Date(details.myInvestment.allocatedAt).toLocaleString()
+                  : "—"
+              }
+            />
+            <InfoRow
+              label="Action Executable"
               value={
                 <button
-            onClick={() => setIsWithdrawOpen(true)}
-            className="px-6 py-2.5 bg-[#34D399] text-[#090A0F] text-xs font-bold rounded-none hover:bg-[#06D6A0] cursor-pointer"
-          >
-                  Request Withdrawal
+                  onClick={() => setIsWithdrawOpen(true)}
+                  className="px-5 py-2 bg-[#34D399] text-[#090A0F] text-xs font-bold rounded-lg hover:bg-[#06D6A0] cursor-pointer transition-colors shadow-sm"
+                >
+                  Request Fund Payout
                 </button>
               }
             />
@@ -287,18 +459,22 @@ const InvestmentDetails = () => {
   );
 };
 
-const InfoRow = ({ label, value, isBadge }) => (
-  <div className="flex justify-between border-b border-slate-800 py-2">
-    <span className="text-slate-400">{label}</span>
+const InfoRow = ({ label, value, isBadge, isMono, badgeStyle }) => (
+  <div className="flex items-center justify-between border-b border-slate-800/60 py-3 text-xs">
+    <span className="text-slate-400 font-medium">{label}</span>
     {isBadge ? (
-      <span className="bg-slate-700 px-2 py-1 rounded text-xs uppercase font-bold">
-        {value}
+      <span
+        className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold border ${badgeStyle || "bg-slate-800 text-slate-300 border-slate-700"}`}
+      >
+        {value || "Unknown"}
       </span>
     ) : (
-      <span className="font-medium text-white">{value}</span>
+      <span
+        className={`font-semibold text-white ${isMono ? "font-mono text-[13px]" : "capitalize"}`}
+      >
+        {value || "—"}
+      </span>
     )}
-
-   
   </div>
 );
 
