@@ -12,12 +12,10 @@ import {
 } from "lucide-react";
 import { Skeleton, Popover, Button, message } from "antd";
 import { fetchInvestmentById } from "../../api/investmentApi";
+import { requestWithdrawalApi } from "../../api/withdrawalApi"
 import { NIGERIAN_BANKS } from "../../utils/bank";
 
-// Fallback API function reference
-const requestWithdrawalApi = async (payload) => {
-  console.log("Sending withdrawal transaction context:", payload);
-};
+
 
 const formatCurrency = (amount = 0) =>
   new Intl.NumberFormat("en-NG", {
@@ -35,6 +33,8 @@ const InvestmentDetails = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [investmentDetails, setInvestmentDetails] = useState();
 
   // Core structured database object wrapper matching your specific response structure
   const [details, setDetails] = useState({
@@ -55,7 +55,8 @@ const InvestmentDetails = () => {
       setLoading(true);
       setError(null);
       const response = await fetchInvestmentById(id);
-
+      setInvestmentDetails(response?.myInvestment?.allocationId)
+      console.log(response)
       if (response?.success || response?.investment) {
         setDetails({
           investment: response.investment || null,
@@ -75,44 +76,81 @@ const InvestmentDetails = () => {
     }
   };
 
+  // console.log(investmentDetails)
+
   useEffect(() => {
     loadData();
   }, [id]);
 
-  const handleWithdraw = async (e) => {
-    if (e && typeof e.preventDefault === "function") e.preventDefault();
+  // const handleWithdraw = async (e) => {
+  //   if (e && typeof e.preventDefault === "function") e.preventDefault();
 
-    const availableToWithdraw = details.myInvestment?.withdrawableLimit || 0;
-    if (Number(formData.amount) > availableToWithdraw) {
-      message.error(
-        "Requested withdrawal value exceeds limit capacity allocation.",
-      );
-      return;
-    }
+  //   const availableToWithdraw = details.myInvestment?.withdrawableLimit || 0;
+  //   if (Number(formData.amount) > availableToWithdraw) {
+  //     message.error(
+  //       "Requested withdrawal value exceeds limit capacity allocation.",
+  //     );
+  //     return;
+  //   }
 
-    setIsSubmitting(true);
-    try {
-      await requestWithdrawalApi({
-        ...formData,
-        investmentId: id,
-        allocationId: details.myInvestment?.allocationId,
-      });
-      message.success("Withdrawal request submitted successfully!");
-      setIsWithdrawOpen(false);
-      loadData();
-    } catch (err) {
-      console.error(err.response?.data);
-      message.error(
-        err.response?.data?.message || "Withdrawal operation failed",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  //   setIsSubmitting(true);
+  //   try {
+  //     await requestWithdrawalApi({
+  //       ...formData,
+  //       investmentId: id,
+  //       allocationId: details.myInvestment?.allocationId,
+  //     });
+  //     message.success("Withdrawal request submitted successfully!");
+  //     setIsWithdrawOpen(false);
+  //     loadData();
+  //   } catch (err) {
+  //     console.error(err.response?.data);
+  //     message.error(
+  //       err.response?.data?.message || "Withdrawal operation failed",
+  //     );
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
+
+const handleSubmitWithdrawal = async () => {
+  // 1. Guard clause: Ensure the ID exists before attempting the API call
+  if (!investmentDetails) {
+    return message.error("Allocation ID not found.");
+  }
+
+  setIsSubmitting(true);
+  try {
+    // 2. Destructure properties directly out of formData state object
+    const { amount, bankName, accountNumber, accountName } = formData;
+
+    // 3. Execute the API request with form state values
+    await requestWithdrawalApi(investmentDetails, {
+      amount,
+      bankName,
+      accountNumber,
+      accountName,
+    });
+
+    // 4. Handle successful submission UI state updates
+    message.success("Withdrawal request submitted successfully.");
+    setIsWithdrawOpen(false); // Closes the modal matching your state name
+    loadData();              // Reloads your backend data matching your loader name
+    
+  } catch (error) {
+    // 5. Handle server-side validation or network errors cleanly
+    console.error("Withdrawal error:", error);
+    message.error(
+      error?.response?.data?.message || "Failed to submit withdrawal request."
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const handleConfirm = async () => {
     setPopoverOpen(false);
-    await handleWithdraw();
+    await handleSubmitWithdrawal();
   };
 
   // Maps properties seamlessly into dynamic card blocks (now containing 6 cards)
@@ -250,7 +288,7 @@ const InvestmentDetails = () => {
               </button>
             </div>
 
-            <form onSubmit={handleWithdraw} className="space-y-4 text-xs">
+            <form onSubmit={handleSubmitWithdrawal} className="space-y-4 text-xs">
               <div>
                 <label className="text-slate-400 block mb-1 text-[11px] uppercase tracking-wide font-medium">
                   Withdrawal Amount
@@ -259,6 +297,7 @@ const InvestmentDetails = () => {
                   type="number"
                   placeholder="0.00"
                   required
+                  value={formData.amount}
                   min="1"
                   disabled={isSubmitting}
                   className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white rounded-lg focus:outline-none focus:border-[#34D399] font-mono"
@@ -338,8 +377,8 @@ const InvestmentDetails = () => {
               <div className="pt-2">
                 <Popover
                   content={
-                    <div className="p-2 space-y-3 max-w-[240px]">
-                      <p className="text-xs text-slate-300">
+                    <div className="p-2 space-y-3 max-w-[240px] ">
+                      <p className="text-xs text-black">
                         Are you certain the inputted financial destination
                         parameters are accurate?
                       </p>

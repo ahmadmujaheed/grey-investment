@@ -1,8 +1,8 @@
 import apiClient from "./apiClient"; // Ensure this points to your configured axios instance
 
 // User: Request a withdrawal
-export const requestWithdrawalApi = async (data) => {
-  const response = await apiClient.post("/withdrawals/request", data);
+export const requestWithdrawalApi = async (allocationId, data) => {
+  const response = await apiClient.post(`/withdrawals/allocation/${allocationId}/request-withdrawal`, data);
   return response.data;
 };
 
