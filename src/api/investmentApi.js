@@ -5,7 +5,7 @@ export const fetchAllInvestments = async (page = 1, limit = 10) => {
   const response = await apiClient.get(
     `/investments?page=${page}&limit=${limit}`,
   );
-  console.log(response);
+  // console.log(response);
   return response.data;
   // Returns: { data: [...], currentPage, totalPages }
 };
@@ -36,7 +36,7 @@ export const distributeInvestmentProfits = async (
   // distributionData expected structure:
   // { totalProfit: number, companyShare: number, investorShare: number }
   const response = await apiClient.post(
-    `/investments/${investmentId}/distribute-yield`,
+    `/investments/${investmentId}/share-profit`,
     distributionData,
   );
   // console.log(response)
