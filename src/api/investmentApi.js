@@ -35,7 +35,7 @@ export const distributeInvestmentProfits = async (
 ) => {
   // distributionData expected structure:
   // { totalProfit: number, companyShare: number, investorShare: number }
-  const response = await apiClient.post(
+  const response = await apiClient.patch(
     `/investments/${investmentId}/share-profit`,
     distributionData,
   );

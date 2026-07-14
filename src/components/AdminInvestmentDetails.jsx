@@ -397,6 +397,8 @@ const AdminInvestmentDetails = () => {
 
     const poolId = investmentDetails?.investment?._id || id;
 
+    // console.log(poolId)
+
     try {
       setDistribute(true);
 
