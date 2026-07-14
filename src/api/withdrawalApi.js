@@ -29,13 +29,20 @@ export const adminSetWithdrawalAmount = async (payload) => {
 };
 
 
-// Admin: Approve/Reject
-export const approveWithdrawalApi = (requestId) =>
-  apiClient.patch("/withdrawals/approve", {
+// Admin: Approve Withdrawal
+export const approveWithdrawalApi = async (requestId) => {
+  const response = await apiClient.patch("/withdrawals/approve", {
     requestId,
   });
 
-export const rejectWithdrawalApi = (requestId) =>
-  apiClient.patch("/withdrawals/reject", {
+  return response.data;
+};
+
+// Admin: Reject Withdrawal
+export const rejectWithdrawalApi = async (requestId) => {
+  const response = await apiClient.patch("/withdrawals/reject", {
     requestId,
   });
+
+  return response.data;
+};
