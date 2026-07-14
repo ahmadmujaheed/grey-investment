@@ -392,31 +392,57 @@ const AdminInvestmentDetails = () => {
   //   }
   // };
 
+  // const handleDistributeProfit = async (event) => {
+  //   event.preventDefault();
+
+  //   const poolId = investmentDetails?.investment?._id || id;
+
+  //   // console.log(poolId)
+
+  //   try {
+  //     setDistribute(true);
+
+  //    const res = await distributeInvestmentProfits(poolId, {
+  //       totalProfit: inputProfitAmount,
+  //       companyShare: companyPercent,
+  //       investorShare: investorPercent,
+  //     });
+
+  //     console.log(res)
+  //     message.success("Profit distribution completed.");
+  //     await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
+  //   } catch (error) {
+  //     console.error(error);
+  //     message.error("Failed to distribute profit.");
+  //   } finally {
+  //     setDistribute(false);
+  //   }
+  // };
+
   const handleDistributeProfit = async (event) => {
-    event.preventDefault();
+  event.preventDefault();
 
-    const poolId = investmentDetails?.investment?._id || id;
+  const poolId = investmentDetails?.investment?._id || id;
 
-    // console.log(poolId)
+  try {
+    setDistribute(true);
 
-    try {
-      setDistribute(true);
+    const res = await distributeInvestmentProfits(poolId, {
+      totalProfit: inputProfitAmount,
+      companyShare: companyPercent,
+      investorShare: investorPercent,
+    });
 
-      await distributeInvestmentProfits(poolId, {
-        totalProfit: inputProfitAmount,
-        companyShare: companyPercent,
-        investorShare: investorPercent,
-      });
-
-      message.success("Profit distribution completed.");
-      await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
-    } catch (error) {
-      console.error(error);
-      message.error("Failed to distribute profit.");
-    } finally {
-      setDistribute(false);
-    }
-  };
+    console.log(res);
+    message.success("Profit distribution completed.");
+    await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
+  } catch (error) {
+    console.error(error);
+    message.error("Failed to distribute profit.");
+  } finally {
+    setDistribute(false);
+  }
+};
 
   const withdrawableAllocations = (selectedUser?.allocations || []).filter(
     (allocation) =>

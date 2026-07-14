@@ -39,7 +39,7 @@ export const distributeInvestmentProfits = async (
     `/investments/${investmentId}/share-profit`,
     distributionData,
   );
-  // console.log(response)
+  console.log(response)
   return response.data;
 };
 
