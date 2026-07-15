@@ -1,44 +1,39 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { message, Tag, Skeleton } from "antd";
-import { Wallet, TrendingUp, ShieldCheck, X } from "lucide-react";
+import { message, Tag, Skeleton, Pagination } from "antd";
+import { Wallet, TrendingUp, ShieldCheck, X, Eye, ArrowUpRight, ArrowRight } from "lucide-react";
 import { fetchUserInvestments } from "../../api/investmentApi";
-import { requestWithdrawalApi } from "../../api/withdrawalApi";
-import { NIGERIAN_BANKS } from "../../utils/bank";
+
 
 const Investments = () => {
   const [investments, setInvestments] = useState([]);
   const [investmentsummary, setInvestmentsummary] = useState({ 
-  totalPrincipal: 0, 
-  totalYield: 0, 
-  activePoolsCount: 0 
-});
+    totalPrincipal: 0, 
+    totalYield: 0, 
+    activePoolsCount: 0 
+  });
   const [loading, setLoading] = useState(true);
 
-  // Withdrawal/Management States
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 6; // Shows 6 beautiful cards per page (ideal for a 3x2 grid)
+
   const [selectedInv, setSelectedInv] = useState(null);
-  const [newAmount, setNewAmount] = useState("");
-  const [formData, setFormData] = useState({
-    amount: "",
-    bankName: "",
-    accountName: "",
-    accountNumber: "",
-  });
 
   useEffect(() => {
     const loadInvestments = async () => {
       try {
         setLoading(true);
         const res = await fetchUserInvestments();
-        setInvestments(res.data || []);
+        setInvestments(res.investments || []);
         setInvestmentsummary(
-  res.summary || {
-    totalPrincipal: 0,
-    totalYield: 0,
-    activePoolsCount: 0,
-  }
-);
+          res.summary || {
+            totalPrincipal: res.investments?.reduce((acc, curr) => acc + (curr.principal || 0), 0) || 0,
+            totalYield: res.investments?.reduce((acc, curr) => acc + (curr.profitEarned || 0), 0) || 0,
+            activePoolsCount: res.investments?.filter(inv => inv.status === "active").length || 0,
+          }
+        );
       } catch (err) {
         message.error("Could not load investment data.");
       } finally {
@@ -48,50 +43,32 @@ const Investments = () => {
     loadInvestments();
   }, []);
 
-  // console.log(investmentsummary)
-
-  // Update handleWithdraw
-//   const handleWithdraw = async (e) => {
-//     e.preventDefault();
-//     try {
-//       await requestWithdrawalApi({
-//         ...formData,
-//         investmentId: selectedInv._id,
-//         source: "capital",
-//       });
-//       message.success("Withdrawal request submitted successfully.");
-//       setIsModalOpen(false);
-//     } catch (err) {
-//       message.error("Failed to submit request.");
-//     }
-//   };
-const handleWithdraw = async (e) => {
+  const handleWithdraw = async (e) => {
     e.preventDefault();
 
-    // 1. Validate against current stake
-    if (formData.amount > selectedInv.amount) {
-      message.error("Withdrawal amount cannot exceed your current stake.");
+    if (formData.amount > (selectedInv?.availableToWithdraw || 0)) {
+      message.error("Withdrawal amount cannot exceed your available withdrawable balance.");
       return;
     }
 
     try {
       await requestWithdrawalApi({
         ...formData,
-        investmentId: selectedInv._id,
-        source: "capital",
+        allocation: selectedInv.allocationId,
+        investmentId: selectedInv.investmentId,
+        source: "profit",
       });
 
-      // 2. Optimistic UI Update: Recalculate local state
       setInvestments((prevInvestments) =>
         prevInvestments.map((inv) =>
-          inv._id === selectedInv._id
-            ? { ...inv, status: "pending" } // Optionally mark as pending
+          inv.allocationId === selectedInv.allocationId
+            ? { ...inv, availableToWithdraw: inv.availableToWithdraw - formData.amount }
             : inv
         )
       );
 
       message.success("Withdrawal request submitted successfully.");
-      setIsModalOpen(false);
+      setIsWithdrawModalOpen(false);
       setFormData({ amount: "", bankName: "", accountName: "", accountNumber: "" });
     } catch (err) {
       message.error("Failed to submit request. Please try again.");
@@ -99,7 +76,7 @@ const handleWithdraw = async (e) => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "active":
         return "green";
       case "pending":
@@ -113,198 +90,174 @@ const handleWithdraw = async (e) => {
     }
   };
 
+  // Pagination Logic
+  const indexOfLastItem = currentPage * pageSize;
+  const indexOfFirstItem = indexOfLastItem - pageSize;
+  const currentInvestments = investments.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
-    <div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    <div className="space-y-8  px-4 sm:px-6 py-4">
+      {/* Metrics Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <StatCard
           title="Total Money Invested"
           value={`₦${investmentsummary.totalPrincipal.toLocaleString()}`}
-          icon={<Wallet />}
+          icon={<Wallet className="w-5 h-5 text-emerald-400" />}
+          gradient="from-emerald-500/10 to-transparent"
         />
         <StatCard
-          title="Profit"
+          title="Total Profit"
           value={`₦${investmentsummary.totalYield.toLocaleString()}`}
-          icon={<TrendingUp />}
+          icon={<TrendingUp className="w-5 h-5 text-emerald-400" />}
+          gradient="from-emerald-500/10 to-transparent"
+          highlight={true}
         />
         <StatCard
           title="Active Pools"
           value={investmentsummary.activePoolsCount}
-          icon={<ShieldCheck />}
+          icon={<ShieldCheck className="w-5 h-5 text-emerald-400" />}
+          gradient="from-emerald-500/10 to-transparent"
         />
       </div>
 
+      {/* Grid Cards Section */}
       {loading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="bg-[#0b0d16] p-6 border border-slate-900 rounded-lg space-y-4">
+              <Skeleton active paragraph={{ rows: 4 }} />
+            </div>
+          ))}
+        </div>
       ) : (
-        <div className="border border-slate-800 rounded-none overflow-hidden">
-          <div className="grid grid-cols-5 bg-[#090A0F] border-b border-slate-800 text-[#9CA3AF] text-xs font-bold uppercase tracking-wider">
-            <div className="p-4">Pool Title</div>
-            <div className="p-4">Principal</div>
-            <div className="p-4">Profit</div>
-            <div className="p-4">Status</div>
-            <div className="p-4">Action</div>
-          </div>
+        <div className="space-y-6">
+          {investments.length === 0 ? (
+            <div className="text-center py-16 border border-dashed border-slate-800 rounded-lg bg-[#06070c]">
+              <p className="text-slate-500 text-sm">No active investments found.</p>
+            </div>
+          ) : (
+            <>
+              {/* Card Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <AnimatePresence mode="popLayout">
+                  {currentInvestments.map((inv) => (
+                    <motion.div
+                      key={inv.allocationId}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.25 }}
+                      className="group relative border border-slate-800/80 hover:border-emerald-500/30 bg-[#06070c] rounded-xl p-5 flex flex-col justify-between transition-all duration-300 shadow-xl hover:shadow-emerald-950/5"
+                    >
+                      {/* Card Header */}
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="space-y-1">
+                          <Tag 
+                            color={getStatusColor(inv.status)}
+                            className="px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider m-0"
+                          >
+                            {inv.status || "pending"}
+                          </Tag>
+                          <h4 className="font-bold text-white text-base tracking-wide capitalize group-hover:text-emerald-400 transition-colors pt-1">
+                            {inv.title}
+                          </h4>
+                        </div>
+                        <Link
+                          to={`investment/${inv.investmentId}`}
+                          className="p-2 bg-slate-900/80 text-slate-400 hover:text-white rounded-lg border border-slate-800 hover:border-slate-700 transition-all flex items-center justify-center cursor-pointer"
+                          title="View Details"
+                        >
+                          <Eye size={15} />
+                        </Link>
+                      </div>
 
-          <div className="divide-y divide-slate-800 font-medium text-[#9CA3AF]">
-            <AnimatePresence>
-              {investments.map((inv) => (
-                <motion.div
-                  key={inv._id}
-                  className="grid grid-cols-5 p-4 items-center hover:bg-[#0F111A] transition-colors"
-                >
-                  <span className="font-semibold text-white capitalize">
-                    {inv.title}
-                  </span>
-                  <span>₦{inv.amount.toLocaleString()}</span>
-                  <span className="text-[#34D399]">
-                    +₦{inv.profitCollected.toLocaleString()}
-                  </span>
-                  <span>
-                    <Tag color={getStatusColor(inv.status)}>
-                      {inv.status.toUpperCase()}
-                    </Tag>
-                  </span>
-                  <div>
-                    {inv.status === "pending" ? (
-                      <button
-                        onClick={() => {
-                          setSelectedInv(inv);
-                          setNewAmount(inv.amount);
-                          setIsModalOpen(true);
-                        }}
-                        className="text-[#34D399] hover:text-white transition-colors cursor-pointer"
-                      >
-                        <Wallet size={16} />
-                      </button>
-                    ) : (
-                      <span className="text-slate-700 text-xs italic">
-                        Locked
-                      </span>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
+                      {/* Card Financial Details */}
+                      <div className="space-y-3.5 my-3">
+                        <div className="flex justify-between items-center bg-[#0a0c14] p-3 rounded-lg border border-slate-900">
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Principal</p>
+                            <p className="text-sm font-bold text-slate-100 mt-0.5">
+                              ₦{(inv.principal || 0).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] text-emerald-500/80 uppercase tracking-wider font-semibold">Profit Earned</p>
+                            <p className="text-sm font-black text-emerald-400 mt-0.5">
+                              +₦{(inv.profitEarned || 0).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Available Profit Info */}
+                        <div className="flex justify-between items-center text-xs px-1">
+                          <span className="text-slate-500 font-medium">Withdrawable Profit:</span>
+                          <span className="text-white font-bold">
+                            ₦{(inv.availableToWithdraw || 0).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card Action Footer */}
+                      <div className="mt-4 pt-4 border-t border-slate-900 flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-slate-600">ID: ...{inv.allocationId.slice(-6)}</span>
+                        
+                        {inv.status === "active" || inv.status === "completed" ? (
+                          <button
+                            onClick={() => {
+                              setSelectedInv(inv);
+                              setIsWithdrawModalOpen(true);
+                            }}
+                            className="px-4 py-2 bg-emerald-400/5 hover:bg-emerald-400 border border-emerald-500/20 hover:border-emerald-400 text-emerald-400 hover:text-black rounded-lg transition-all duration-250 cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                          >
+                            <Wallet size={13} />
+                            <span>Withdraw</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-600 text-[11px] font-semibold italic bg-slate-900/40 px-2.5 py-1 rounded border border-slate-900">
+                            Locked Pool
+                          </span>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+
+              {/* Ant Design Premium Styled Pagination */}
+              <div className="flex justify-center pt-6 border-t border-slate-900/60">
+                <Pagination
+                  current={currentPage}
+                  pageSize={pageSize}
+                  total={investments.length}
+                  onChange={(page) => setCurrentPage(page)}
+                  showSizeChanger={false}
+                  className="premium-pagination"
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {/* Management Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            onClick={() => setIsModalOpen(false)}
-            className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-xs"
-          />
-          <div className="bg-[#1F2937] border border-slate-800 rounded-none w-full max-w-sm p-6 relative z-10 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-base text-white">
-                Adjust Investment
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-[#9CA3AF] hover:text-white"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="bg-[#090A0F] p-3 border border-slate-800">
-              <p className="text-[10px] text-[#9CA3AF] uppercase">
-                Current Stake
-              </p>
-              <p className="text-lg font-bold text-white">
-                ₦{selectedInv?.amount.toLocaleString()}
-              </p>
-            </div>
-
-            <form onSubmit={handleWithdraw} className="space-y-3 text-xs">
-              {/* Amount */}
-              <input
-                type="number"
-                placeholder="Amount"
-                required
-                className={`w-full px-3 py-2.5 bg-[#090A0F] border ${
-                  formData.amount > selectedInv?.amount
-                    ? "border-red-500"
-                    : "border-slate-800"
-                } text-white`}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    amount: parseFloat(e.target.value),
-                  })
-                }
-              />
-
-              {/* Validation Message */}
-              {formData.amount > selectedInv?.amount && (
-                <p className="text-red-500 text-[10px]">
-                  Amount exceeds your stake of ₦
-                  {selectedInv?.amount.toLocaleString()}
-                </p>
-              )}
-
-              {/* Bank Select */}
-              <select
-                required
-                className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white"
-                onChange={(e) =>
-                  setFormData({ ...formData, bankName: e.target.value })
-                }
-              >
-                <option value="">Select a Bank</option>
-                {NIGERIAN_BANKS.map((b) => (
-                  <option key={b.code} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
-
-              {/* Account Name */}
-              <input
-                type="text"
-                placeholder="Account Name"
-                required
-                className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white"
-                onChange={(e) =>
-                  setFormData({ ...formData, accountName: e.target.value })
-                }
-              />
-
-              {/* Account Number */}
-              <input
-                type="number"
-                placeholder="Account Number"
-                required
-                className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white"
-                onChange={(e) =>
-                  setFormData({ ...formData, accountNumber: e.target.value })
-                }
-              />
-
-              <button
-                type="submit"
-                className="w-full py-3 font-bold bg-[#34D399] text-[#090A0F] hover:bg-[#28b485]"
-              >
-                Submit Withdrawal
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+    
     </div>
   );
 };
 
-const StatCard = ({ title, value, icon }) => (
-  <div className="p-4 border border-slate-800 bg-[#090A0F] rounded-none flex items-center gap-4">
-    <div className="p-2 bg-slate-900 rounded-full text-[#34D399]">{icon}</div>
-    <div>
-      <p className="text-slate-400 text-[11px] uppercase tracking-wider">
+const StatCard = ({ title, value, icon, gradient, highlight = false }) => (
+  <div className={`p-5 relative border rounded-xl bg-[#06070c] overflow-hidden flex items-center justify-between transition-all duration-300 hover:border-slate-700 ${highlight ? 'border-emerald-500/25 ring-1 ring-emerald-500/5' : 'border-slate-800'}`}>
+    <div className={`absolute inset-0 bg-gradient-to-tr ${gradient} pointer-events-none`} />
+    <div className="relative z-10 space-y-2">
+      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
         {title}
       </p>
-      <p className="text-lg font-bold">{value}</p>
+      <p className={`text-2xl font-extrabold tracking-tight ${highlight ? 'text-emerald-400' : 'text-white'}`}>
+        {value}
+      </p>
+    </div>
+    <div className="relative z-10 p-3 bg-slate-900/60 border border-slate-800/80 rounded-lg">
+      {icon}
     </div>
   </div>
 );
