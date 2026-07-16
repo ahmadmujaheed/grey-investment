@@ -12,7 +12,7 @@ export const fetchDashboardAnalytics = async () => {
 
 export const fetchDashboardAnalyticsChart = async () => {
   const response = await apiClient.get("/analytics/admin/dashboard/charts");
-  console.log(response);
+  // console.log(response);
   return response.data;
 };
 

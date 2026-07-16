@@ -156,7 +156,10 @@ const Dashboard = () => {
           },
           {
             label: "Completed Portfolios",
-            value: cards?.completedInvestments || 0,
+            value:
+              recentInvestments?.filter(
+                (inv) => inv.investmentStatus === "completed",
+              ).length || 0,
             icon: <ShieldCheck size={18} className="text-indigo-400" />,
           },
           {
@@ -222,11 +225,14 @@ const Dashboard = () => {
                     >
                       <td className="p-4 pl-6 font-bold text-white">
                         <div className="flex items-center gap-3">
-                            <img
-                              src={investment.image.url || "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400&auto=format&fit=crop&q=60"}
-                              alt={investment.title}
-                              className="w-7 h-7 object-cover border border-slate-700 rounded bg-[#090A0F]"
-                            />
+                          <img
+                            src={
+                              investment.image.url ||
+                              "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=400&auto=format&fit=crop&q=60"
+                            }
+                            alt={investment.title}
+                            className="w-7 h-7 object-cover border border-slate-700 rounded bg-[#090A0F]"
+                          />
                           <div>
                             <p className="capitalize">
                               {investment.title || "Asset Pool"}
@@ -392,7 +398,6 @@ const Dashboard = () => {
                           </div>
 
                           <div className="flex items-center gap-3 shrink-0">
-                           
                             <span className="font-mono font-bold text-white text-right min-w-[70px]">
                               {tx.amount ? formatCurrency(tx.amount) : "—"}
                             </span>

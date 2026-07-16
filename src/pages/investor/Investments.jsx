@@ -27,7 +27,7 @@ const Investments = () => {
       setLoading(true);
       // Execute the API request passing current page index and item constraints
       const res = await fetchUserInvestments(page, pageSize);
-
+      // console.log(res)
       setInvestments(res.investments || []);
       setTotalCount(res.count || 0);
 
