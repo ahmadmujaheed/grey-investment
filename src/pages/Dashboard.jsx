@@ -128,7 +128,6 @@ const Dashboard = () => {
     loadSystemAnalytics();
   }, []);
 
-  console.log("Fetched Dashboard Analytics:", analyticsData);
   // 💀 Skeleton Loader View (Perfect Dark Theme Matching)
   if (loading) {
     return (
