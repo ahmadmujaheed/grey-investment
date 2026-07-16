@@ -40,7 +40,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 7;
 
   // const getUser = async () => {
   //   try {
@@ -392,11 +392,7 @@ const Dashboard = () => {
                           </div>
 
                           <div className="flex items-center gap-3 shrink-0">
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-sm border uppercase tracking-wider ${badgeColor}`}
-                            >
-                              {actionTypeLabel}
-                            </span>
+                           
                             <span className="font-mono font-bold text-white text-right min-w-[70px]">
                               {tx.amount ? formatCurrency(tx.amount) : "—"}
                             </span>

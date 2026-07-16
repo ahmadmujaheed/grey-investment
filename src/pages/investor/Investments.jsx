@@ -2,101 +2,93 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { message, Tag, Skeleton, Pagination } from "antd";
-import { Wallet, TrendingUp, ShieldCheck, X, Eye, ArrowUpRight, ArrowRight } from "lucide-react";
+import { Wallet, TrendingUp, ShieldCheck, Eye } from "lucide-react";
 import { fetchUserInvestments } from "../../api/investmentApi";
-
 
 const Investments = () => {
   const [investments, setInvestments] = useState([]);
-  const [investmentsummary, setInvestmentsummary] = useState({ 
-    totalPrincipal: 0, 
-    totalYield: 0, 
-    activePoolsCount: 0 
+  const [investmentsummary, setInvestmentsummary] = useState({
+    totalPrincipal: 0,
+    totalYield: 0,
+    activePoolsCount: 0,
   });
   const [loading, setLoading] = useState(true);
 
-  // Pagination States
+  // Pagination States (Syncing state variables directly with the API payload)
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 6; // Shows 6 beautiful cards per page (ideal for a 3x2 grid)
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 6;
 
   const [selectedInv, setSelectedInv] = useState(null);
 
-  useEffect(() => {
-    const loadInvestments = async () => {
-      try {
-        setLoading(true);
-        const res = await fetchUserInvestments();
-        setInvestments(res.investments || []);
-        setInvestmentsummary(
-          res.summary || {
-            totalPrincipal: res.investments?.reduce((acc, curr) => acc + (curr.principal || 0), 0) || 0,
-            totalYield: res.investments?.reduce((acc, curr) => acc + (curr.profitEarned || 0), 0) || 0,
-            activePoolsCount: res.investments?.filter(inv => inv.status === "active").length || 0,
-          }
-        );
-      } catch (err) {
-        message.error("Could not load investment data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadInvestments();
-  }, []);
-
-  const handleWithdraw = async (e) => {
-    e.preventDefault();
-
-    if (formData.amount > (selectedInv?.availableToWithdraw || 0)) {
-      message.error("Withdrawal amount cannot exceed your available withdrawable balance.");
-      return;
-    }
-
+  // Load and refresh investments when the page changes
+  const loadInvestments = async (page) => {
     try {
-      await requestWithdrawalApi({
-        ...formData,
-        allocation: selectedInv.allocationId,
-        investmentId: selectedInv.investmentId,
-        source: "profit",
-      });
+      setLoading(true);
+      // Execute the API request passing current page index and item constraints
+      const res = await fetchUserInvestments(page, pageSize);
 
-      setInvestments((prevInvestments) =>
-        prevInvestments.map((inv) =>
-          inv.allocationId === selectedInv.allocationId
-            ? { ...inv, availableToWithdraw: inv.availableToWithdraw - formData.amount }
-            : inv
-        )
+      setInvestments(res.investments || []);
+      setTotalCount(res.count || 0);
+
+      setInvestmentsummary(
+        res.summary || {
+          totalPrincipal:
+            res.investments?.reduce(
+              (acc, curr) => acc + (curr.principal || 0),
+              0,
+            ) || 0,
+          totalYield:
+            res.investments?.reduce(
+              (acc, curr) => acc + (curr.profitEarned || 0),
+              0,
+            ) || 0,
+          activePoolsCount:
+            res.investments?.filter((inv) => inv.allocationStatus === "active")
+              .length || 0,
+        },
       );
-
-      message.success("Withdrawal request submitted successfully.");
-      setIsWithdrawModalOpen(false);
-      setFormData({ amount: "", bankName: "", accountName: "", accountNumber: "" });
     } catch (err) {
-      message.error("Failed to submit request. Please try again.");
+      message.error("Could not load investment data.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  useEffect(() => {
+    loadInvestments(currentPage);
+  }, [currentPage]);
+
+  // Adjust handleWithdrawal code wrapper as needed
+  const handleWithdraw = async (e) => {
+    e.preventDefault();
+    if (formData.amount > (selectedInv?.availableToWithdraw || 0)) {
+      message.error(
+        "Withdrawal amount cannot exceed your available withdrawable balance.",
+      );
+      return;
+    }
+    // ... rest of your withdraw flow execution
+  };
+
+  // Color Mapping matching your actual API investmentStatus keys
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case "active":
-        return "green";
       case "pending":
         return "orange";
       case "completed":
-        return "blue";
+        return "green";
       case "paused":
         return "volcano";
+      case "active":
+        return "blue";
       default:
         return "default";
     }
   };
 
-  // Pagination Logic
-  const indexOfLastItem = currentPage * pageSize;
-  const indexOfFirstItem = indexOfLastItem - pageSize;
-  const currentInvestments = investments.slice(indexOfFirstItem, indexOfLastItem);
-
   return (
-    <div className="space-y-8  px-4 sm:px-6 py-4">
+    <div className="space-y-8 sm:px-6 py-4">
       {/* Metrics Section */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <StatCard
@@ -124,7 +116,10 @@ const Investments = () => {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((n) => (
-            <div key={n} className="bg-[#0b0d16] p-6 border border-slate-900 rounded-lg space-y-4">
+            <div
+              key={n}
+              className="bg-[#0b0d16] p-6 border border-slate-900 rounded-lg space-y-4"
+            >
               <Skeleton active paragraph={{ rows: 4 }} />
             </div>
           ))}
@@ -133,14 +128,16 @@ const Investments = () => {
         <div className="space-y-6">
           {investments.length === 0 ? (
             <div className="text-center py-16 border border-dashed border-slate-800 rounded-lg bg-[#06070c]">
-              <p className="text-slate-500 text-sm">No active investments found.</p>
+              <p className="text-slate-500 text-sm">
+                No active investments found.
+              </p>
             </div>
           ) : (
             <>
-              {/* Card Grid */}
+              {/* Card Grid displaying server-side chunk */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <AnimatePresence mode="popLayout">
-                  {currentInvestments.map((inv) => (
+                  {investments.map((inv) => (
                     <motion.div
                       key={inv.allocationId}
                       layout
@@ -153,11 +150,11 @@ const Investments = () => {
                       {/* Card Header */}
                       <div className="flex justify-between items-start mb-4">
                         <div className="space-y-1">
-                          <Tag 
-                            color={getStatusColor(inv.status)}
+                          <Tag
+                            color={getStatusColor(inv.investmentStatus)}
                             className="px-2 py-0.5 rounded text-[9px] uppercase font-bold tracking-wider m-0"
                           >
-                            {inv.status || "pending"}
+                            {inv.investmentStatus || "Active"}
                           </Tag>
                           <h4 className="font-bold text-white text-base tracking-wide capitalize group-hover:text-emerald-400 transition-colors pt-1">
                             {inv.title}
@@ -176,13 +173,17 @@ const Investments = () => {
                       <div className="space-y-3.5 my-3">
                         <div className="flex justify-between items-center bg-[#0a0c14] p-3 rounded-lg border border-slate-900">
                           <div>
-                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Principal</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
+                              Principal
+                            </p>
                             <p className="text-sm font-bold text-slate-100 mt-0.5">
                               ₦{(inv.principal || 0).toLocaleString()}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-[10px] text-emerald-500/80 uppercase tracking-wider font-semibold">Profit Earned</p>
+                            <p className="text-[10px] text-emerald-500/80 uppercase tracking-wider font-semibold">
+                              Profit Earned
+                            </p>
                             <p className="text-sm font-black text-emerald-400 mt-0.5">
                               +₦{(inv.profitEarned || 0).toLocaleString()}
                             </p>
@@ -191,18 +192,22 @@ const Investments = () => {
 
                         {/* Available Profit Info */}
                         <div className="flex justify-between items-center text-xs px-1">
-                          <span className="text-slate-500 font-medium">Withdrawable Profit:</span>
+                          <span className="text-slate-500 font-medium">
+                            Withdrawable Limit:
+                          </span>
                           <span className="text-white font-bold">
-                            ₦{(inv.availableToWithdraw || 0).toLocaleString()}
+                            ₦{(inv.withdrawableLimit || 0).toLocaleString()}
                           </span>
                         </div>
                       </div>
 
                       {/* Card Action Footer */}
-                      <div className="mt-4 pt-4 border-t border-slate-900 flex items-center justify-between">
-                        <span className="text-[10px] font-mono text-slate-600">ID: ...{inv.allocationId.slice(-6)}</span>
-                        
-                        {inv.status === "active" || inv.status === "completed" ? (
+                      {/* <div className="mt-4 pt-4 border-t border-slate-900 flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-slate-600">
+                          ID: ...{inv.allocationId.slice(-6)}
+                        </span>
+
+                        {inv.allocationStatus === "active" ? (
                           <button
                             onClick={() => {
                               setSelectedInv(inv);
@@ -218,7 +223,7 @@ const Investments = () => {
                             Locked Pool
                           </span>
                         )}
-                      </div>
+                      </div> */}
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -229,7 +234,7 @@ const Investments = () => {
                 <Pagination
                   current={currentPage}
                   pageSize={pageSize}
-                  total={investments.length}
+                  total={totalCount} // Pointed directly to response total count metric
                   onChange={(page) => setCurrentPage(page)}
                   showSizeChanger={false}
                   className="premium-pagination"
@@ -239,20 +244,24 @@ const Investments = () => {
           )}
         </div>
       )}
-
-    
     </div>
   );
 };
 
 const StatCard = ({ title, value, icon, gradient, highlight = false }) => (
-  <div className={`p-5 relative border rounded-xl bg-[#06070c] overflow-hidden flex items-center justify-between transition-all duration-300 hover:border-slate-700 ${highlight ? 'border-emerald-500/25 ring-1 ring-emerald-500/5' : 'border-slate-800'}`}>
-    <div className={`absolute inset-0 bg-gradient-to-tr ${gradient} pointer-events-none`} />
+  <div
+    className={`p-5 relative border rounded-xl bg-[#06070c] overflow-hidden flex items-center justify-between transition-all duration-300 hover:border-slate-700 ${highlight ? "border-emerald-500/25 ring-1 ring-emerald-500/5" : "border-slate-800"}`}
+  >
+    <div
+      className={`absolute inset-0 bg-gradient-to-tr ${gradient} pointer-events-none`}
+    />
     <div className="relative z-10 space-y-2">
       <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
         {title}
       </p>
-      <p className={`text-2xl font-extrabold tracking-tight ${highlight ? 'text-emerald-400' : 'text-white'}`}>
+      <p
+        className={`text-2xl font-extrabold tracking-tight ${highlight ? "text-emerald-400" : "text-white"}`}
+      >
         {value}
       </p>
     </div>

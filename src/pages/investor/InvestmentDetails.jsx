@@ -56,7 +56,7 @@ const InvestmentDetails = () => {
       setError(null);
       const response = await fetchInvestmentById(id);
       setInvestmentDetails(response?.myInvestment?.allocationId)
-      console.log(response)
+      // console.log(response)
       if (response?.success || response?.investment) {
         setDetails({
           investment: response.investment || null,
@@ -154,6 +154,8 @@ const handleSubmitWithdrawal = async () => {
   };
 
   // Maps properties seamlessly into dynamic card blocks (now containing 6 cards)
+ const availableBalance = details.myInvestment?.availableBalance || 0;
+
   const metrics = [
     {
       label: "Principal Deposited",
@@ -175,9 +177,13 @@ const handleSubmitWithdrawal = async () => {
     },
     {
       label: "Liquid Available Balance",
-      val: details.myInvestment?.availableBalance || 0,
+      val: availableBalance,
       icon: Wallet,
-      color: "text-teal-400",
+      color: availableBalance === 0 ? "text-rose-200" : "text-emerald-200",
+      // Dynamic background and border matching your dark theme palette
+      customBg: availableBalance === 0 
+        ? "bg-rose-950/40 border-rose-500/30" 
+        : "bg-emerald-950/20 border-emerald-500/20",
     },
     {
       label: "Withdrawable Limit",
@@ -248,7 +254,10 @@ const handleSubmitWithdrawal = async () => {
         {metrics.map((item, idx) => (
           <div
             key={idx}
-            className="bg-[#1F2937] border border-slate-800/80 p-5 rounded-xl shadow-md flex flex-col justify-between"
+            // Uses custom background and border classes if defined, otherwise defaults to original slate styles
+            className={`${
+              item.customBg || "bg-[#1F2937] border-slate-800/80"
+            } border p-5 rounded-xl shadow-md flex flex-col justify-between transition-colors duration-200`}
           >
             <div className="flex justify-between items-center mb-3">
               <span className="text-[10px] text-[#9CA3AF] uppercase font-bold tracking-wider">

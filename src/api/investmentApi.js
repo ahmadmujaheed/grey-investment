@@ -103,7 +103,7 @@ export const updateInvestmentStatus = async (investmentId, status) => {
 // 12. Fetch Investments for the Logged-in User
 export const fetchUserInvestments = async () => {
   const response = await apiClient.get(`/investments/my-investments`);
-  console.log(response)
+  // console.log(response)
   return response.data;
 };
 
