@@ -3,8 +3,8 @@ import axios from "axios";
 
 export const useAuthStore = create((set, get) => ({
   // Base config parameters
-  // baseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
-   baseUrl: import.meta.env.VITE_API_BASE_URL || "https://grey-investment-server.onrender.com/api",
+  baseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
+  //  baseUrl: import.meta.env.VITE_API_BASE_URL || "https://grey-investment-server.onrender.com/api",
   
   // Auth state variables - Now pulling safely from sessionStorage
   token: sessionStorage.getItem("auth_token") || null,
@@ -19,17 +19,17 @@ export const useAuthStore = create((set, get) => ({
 checkAuth: async () => {
   set({ loading: true });
   try {
-    const res = await axios.get(`${get().baseUrl}/auth/me`, {
+    const res = await axios.get(`${get().baseUrl}/auth/profile`, {
       headers: { Authorization: `Bearer ${get().token}` }
     });
-    set({ user: res.data, isAuthenticated: true });
+    const user = res.data.user;
+    sessionStorage.setItem("auth_user", JSON.stringify(user));
+    set({ user, isAuthenticated: true });
+    return user;
   } catch (error) {
     console.error("Auth check failed:", error);
-    // REMOVE or COMMENT OUT the line below:
-    // get().logout(); 
-    
-    // Instead, just clear state locally
-    set({ user: null, isAuthenticated: false });
+    get().logout();
+    throw error;
   } finally {
     set({ loading: false });
   }

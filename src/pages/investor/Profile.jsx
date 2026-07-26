@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Wallet, X } from "lucide-react"; // Added X icon
-import { message, Skeleton, Drawer, Table, Tag, Popover, Button } from "antd";
+import { X } from "lucide-react";
+import { message, Skeleton, Drawer, Tag, Popover, Button } from "antd";
 import { useAuthStore } from "../../store/useAuthStore";
 import {
   fetchUserWithdrawalHistory,
@@ -29,49 +29,29 @@ const Profile = () => {
     accountNumber: "",
     source: "profit",
   });
-  const [error, setError] = useState(null);
-
-  const [data, setData] = useState({
-    summaryCards: { availableBalance: 0, totalCollected: 0 },
-    recentContracts: [],
-  });
   const [availableBalance, setAvailableBalance] = useState(0);
 
-  const getAnalytics = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await fetchInvestorAnalytics();
-
+  useEffect(() => {
+    fetchInvestorAnalytics()
+      .then((result) => {
       if (result?.status === "success") {
         setAvailableBalance(result.summaryCards.availableBalance || 0);
-        setData({
-          summaryCards: {
-            ...result.summaryCards,
-            availableBalance: result.summaryCards.availableBalance || 0,
-            totalCollected: result.summaryCards.totalCollected || 0,
-          },
-          recentContracts: result.recentContracts || [],
-        });
       }
-    } catch (err) {
-      console.error("Dashboard calculation error:", err);
-      setError(
-        err.response?.data?.message || "Failed to sync pipeline analytics.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    getAnalytics();
+      })
+      .catch((err) => {
+        console.error("Dashboard calculation error:", err);
+      });
   }, []);
 
   useEffect(() => {
     const init = async () => {
-      await checkAuth();
-      setSyncing(false);
+      try {
+        await checkAuth();
+      } catch {
+        message.error("Unable to load your profile.");
+      } finally {
+        setSyncing(false);
+      }
     };
     init();
   }, [checkAuth]);
@@ -125,7 +105,7 @@ const handleConfirm = async () => {
       {/* Identity Overview */}
       <div className="bg-[#1F2937] border border-slate-800 p-8 rounded-none">
         <h2 className="text-lg font-bold text-white mb-6">User Identity</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
               Full Name
@@ -138,11 +118,39 @@ const handleConfirm = async () => {
             </p>
             <p className="text-white font-semibold">{user?.email}</p>
           </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
+              Phone Number
+            </p>
+            <p className="text-white font-semibold">{user?.phone || "Not provided"}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
+              Account Role
+            </p>
+            <p className="text-white font-semibold capitalize">{user?.role}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
+              Member Since
+            </p>
+            <p className="text-white font-semibold">
+              {user?.createdAt
+                ? new Date(user.createdAt).toLocaleDateString()
+                : "Not available"}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
+              Account ID
+            </p>
+            <p className="text-white font-semibold break-all">{user?.id}</p>
+          </div>
         </div>
       </div>
 
       {/* Financial Hub */}
-      <div className="bg-slate-900 border border-slate-800 p-8 rounded-none flex justify-between items-center">
+      {/* <div className="bg-slate-900 border border-slate-800 p-8 rounded-none flex justify-between items-center">
         <div>
           <h2 className="text-base font-bold text-white">Financial Hub</h2>
           <p className="text-[#9CA3AF] text-xs">
@@ -164,7 +172,7 @@ const handleConfirm = async () => {
             Withdraw Funds
           </button>
         </div>
-      </div>
+      </div> */}
 
       {/* History Drawer */}
       <Drawer
