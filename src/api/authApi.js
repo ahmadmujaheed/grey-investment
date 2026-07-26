@@ -32,7 +32,7 @@ export const getUserProfile = async () => {
  * @returns {Promise<Object>} Backend node execution data payload
  */
 export const updateUserPassword = async (passwordData) => {
-  const response = await apiClient.put(
+  const response = await apiClient.patch(
     "/auth/change-password",
     passwordData,
     { withCredentials: true },

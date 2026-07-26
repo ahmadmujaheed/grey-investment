@@ -8,7 +8,7 @@ import { updateUserPassword } from "../../api/authApi";
 
 const Settings = () => {
   // 🔌 Pull 'user' state and your store mutation actions
-  const { user, checkAuth, setUser, logout } = useAuthStore(); 
+  const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate(); 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -31,13 +31,13 @@ const Settings = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const hasMinLength = formData.newPassword.length >= 6;
+  const hasMinLength = formData.newPassword.length >= 8;
   const passwordsMatch = formData.newPassword && formData.newPassword === formData.confirmPassword;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!hasMinLength) return message.error("New password must be at least 6 characters.");
+    if (!hasMinLength) return message.error("New password must be at least 8 characters.");
     if (!passwordsMatch) return message.error("New password configurations do not match.");
 
     try {
@@ -45,6 +45,7 @@ const Settings = () => {
       await updateUserPassword({
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword,
+        confirmPassword: formData.confirmPassword,
       });
 
       message.success("Password updated successfully!");
@@ -133,7 +134,7 @@ const Settings = () => {
             >
               <div className="flex items-center gap-2">
                 {hasMinLength ? <CheckCircle2 size={14} className="text-[#34D399]" /> : <XCircle size={14} className="text-rose-400" />}
-                <span className={hasMinLength ? "text-slate-300" : "text-slate-400"}>At least 6 characters long</span>
+                <span className={hasMinLength ? "text-slate-300" : "text-slate-400"}>At least 8 characters long</span>
               </div>
               <div className="flex items-center gap-2">
                 {passwordsMatch ? <CheckCircle2 size={14} className="text-[#34D399]" /> : <XCircle size={14} className="text-rose-400" />}
