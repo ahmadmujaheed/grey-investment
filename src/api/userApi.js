@@ -50,3 +50,10 @@ export const updateUser = async (payload) => {
 
   return response.data;
 };
+
+export const deleteUser = async (userId, password) => {
+  const response = await apiClient.delete(`/users/${userId}`, {
+    data: { password },
+  });
+  return response.data;
+};

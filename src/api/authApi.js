@@ -26,6 +26,11 @@ export const getUserProfile = async () => {
   return response.data;
 };
 
+export const updateMyProfile = async (profileData) => {
+  const response = await apiClient.patch("/auth/profile", profileData);
+  return response.data;
+};
+
 /**
  * Updates the logged-in user's account password credentials safely.
  * @param {Object} passwordData - Container holding currentPassword and newPassword strings

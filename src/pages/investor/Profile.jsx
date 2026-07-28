@@ -1,19 +1,24 @@
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { Save, X } from "lucide-react";
 import { message, Skeleton, Drawer, Tag, Popover, Button } from "antd";
 import { useAuthStore } from "../../store/useAuthStore";
 import {
-  fetchUserWithdrawalHistory,
   requestWithdrawalApi,
 } from "../../api/withdrawalApi";
 import { NIGERIAN_BANKS } from "../../utils/bank";
 import { fetchInvestorAnalytics } from "../../api/analyticsApi";
+import { updateMyProfile } from "../../api/authApi";
 
 const Profile = () => {
   const { user, checkAuth } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(true);
-  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(8);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -21,7 +26,7 @@ const Profile = () => {
 
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false); // Restored
-  const [history, setHistory] = useState([]);
+  const history = [];
   const [formData, setFormData] = useState({
     amount: "",
     bankName: NIGERIAN_BANKS[0].name,
@@ -46,7 +51,12 @@ const Profile = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        await checkAuth();
+        const freshUser = await checkAuth();
+        setProfileForm({
+          name: freshUser.name || "",
+          email: freshUser.email || "",
+          phone: freshUser.phone || "",
+        });
       } catch {
         message.error("Unable to load your profile.");
       } finally {
@@ -56,16 +66,25 @@ const Profile = () => {
     init();
   }, [checkAuth]);
 
-  const loadHistory = async () => {
-    setLoadingHistory(true); // Start loader
+  const handleProfileUpdate = async (event) => {
+    event.preventDefault();
+
     try {
-      const data = await fetchUserWithdrawalHistory();
-      setHistory(data);
-      setIsHistoryOpen(true);
-    } catch {
-      message.error("Failed to load history");
+      setSavingProfile(true);
+      const response = await updateMyProfile(profileForm);
+      useAuthStore.getState().updateUserContext(response.user);
+      setProfileForm({
+        name: response.user.name,
+        email: response.user.email,
+        phone: response.user.phone,
+      });
+      message.success(response.message || "Profile updated successfully.");
+    } catch (err) {
+      message.error(
+        err?.response?.data?.message || "Unable to update profile.",
+      );
     } finally {
-      setLoadingHistory(false); // Stop loader
+      setSavingProfile(false);
     }
   };
 
@@ -105,24 +124,60 @@ const handleConfirm = async () => {
       {/* Identity Overview */}
       <div className="bg-[#1F2937] border border-slate-800 p-8 rounded-none">
         <h2 className="text-lg font-bold text-white mb-6">User Identity</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <form
+          onSubmit={handleProfileUpdate}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
               Full Name
             </p>
-            <p className="text-white font-semibold">{user?.name}</p>
+            <input
+              type="text"
+              required
+              value={profileForm.name}
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  name: event.target.value,
+                }))
+              }
+              className="w-full bg-[#090A0F] border border-slate-800 px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#34D399]"
+            />
           </div>
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
               Email
             </p>
-            <p className="text-white font-semibold">{user?.email}</p>
+            <input
+              type="email"
+              required
+              value={profileForm.email}
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  email: event.target.value,
+                }))
+              }
+              className="w-full bg-[#090A0F] border border-slate-800 px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#34D399]"
+            />
           </div>
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
               Phone Number
             </p>
-            <p className="text-white font-semibold">{user?.phone || "Not provided"}</p>
+            <input
+              type="tel"
+              required
+              value={profileForm.phone}
+              onChange={(event) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  phone: event.target.value,
+                }))
+              }
+              className="w-full bg-[#090A0F] border border-slate-800 px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#34D399]"
+            />
           </div>
           <div className="space-y-1">
             <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
@@ -140,13 +195,17 @@ const handleConfirm = async () => {
                 : "Not available"}
             </p>
           </div>
-          <div className="space-y-1">
-            <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF] font-bold">
-              Account ID
-            </p>
-            <p className="text-white font-semibold break-all">{user?.id}</p>
+          <div className="flex items-end">
+            <button
+              type="submit"
+              disabled={savingProfile}
+              className="w-full inline-flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] disabled:opacity-50 text-[#090A0F] font-bold px-4 py-2.5"
+            >
+              <Save size={14} />
+              {savingProfile ? "Saving..." : "Save Profile"}
+            </button>
           </div>
-        </div>
+        </form>
       </div>
 
       {/* Financial Hub */}
@@ -286,6 +345,7 @@ const handleConfirm = async () => {
               {/* Amount Input */}
               <input
                 type="number"
+                min="1"
                 placeholder="Amount"
                 required
                 className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white focus:outline-none focus:border-[#34D399]"
@@ -328,7 +388,9 @@ const handleConfirm = async () => {
               />
 
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]+"
                 placeholder="Account Number"
                 required
                 className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white"

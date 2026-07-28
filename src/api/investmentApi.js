@@ -51,7 +51,7 @@ export const archiveInvestmentPackage = async (investmentId) => {
 };
 
 // 6. FETCH Archived Investment Packages (Paginated)
-export const fetchArchivedInvestments = async (page = 1, limit = 10) => {
+export const fetchArchivedInvestments = async () => {
   const response = await apiClient.get(
     `/investments/archived`,
   );
@@ -87,7 +87,28 @@ export const removeInvestorFromPool = async (investmentId, allocationId) => {
 
 // 10. Edit Investment Package Details (Admin Only)
 export const editInvestment = async (investmentId, data) => {
-  const response = await apiClient.patch(`/investments/${investmentId}`, data);
+  const response = await apiClient.patch(`/investments/${investmentId}`, data, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+};
+
+export const deleteInvestment = async (investmentId, password) => {
+  const response = await apiClient.delete(`/investments/${investmentId}`, {
+    data: { password },
+  });
+  return response.data;
+};
+
+export const updateInvestorAmount = async (
+  investmentId,
+  allocationId,
+  amount,
+) => {
+  const response = await apiClient.patch(
+    `/investments/${investmentId}/allocations/${allocationId}`,
+    { amount },
+  );
   return response.data;
 };
 

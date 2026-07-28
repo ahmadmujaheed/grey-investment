@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "motion/react";
-import { message, Popconfirm, Select, Tag } from "antd";
-import { ArrowLeft, Coins, UserPlus } from "lucide-react";
+import { message, Modal, Popconfirm, Select, Tag } from "antd";
+import { ArrowLeft, Coins, Pencil, UserMinus, UserPlus } from "lucide-react";
 import { HiOutlineArchiveBoxArrowDown } from "react-icons/hi2";
 import { FaRegEdit } from "react-icons/fa";
 
@@ -13,6 +13,9 @@ import {
   distributeInvestmentProfits,
   adminSetWithdrawalAmount,
   removeInvestorFromPool,
+  archiveInvestmentPackage,
+  editInvestment,
+  updateInvestorAmount,
 } from "../api/investmentApi";
 import { Link } from "react-router-dom";
 
@@ -45,6 +48,25 @@ const AdminInvestmentDetails = () => {
   const [withdrawableLimit, setWithdrawableLimit] = useState("");
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [limitLoading, setLimitLoading] = useState(false);
+  const [isEditPackageOpen, setIsEditPackageOpen] = useState(false);
+  const [packageTitle, setPackageTitle] = useState("");
+  const [packageTarget, setPackageTarget] = useState("");
+  const [packageImage, setPackageImage] = useState(null);
+  const [packageSaving, setPackageSaving] = useState(false);
+  const [editingAllocation, setEditingAllocation] = useState(null);
+  const [editedPrincipal, setEditedPrincipal] = useState("");
+  const [principalSaving, setPrincipalSaving] = useState(false);
+
+  const totalEligibleForWithdrawal = Number(
+    addWithdrawable?.totalInvestment ?? addWithdrawable?.totalValue ?? 0,
+  );
+  const currentGrantedLimit = Number(
+    addWithdrawable?.withdrawableLimit || 0,
+  );
+  const remainingLimitCapacity = Math.max(
+    0,
+    totalEligibleForWithdrawal - currentGrantedLimit,
+  );
 
   const addMoney = async () => {
     if (!addWithdrawable?.allocationId) {
@@ -59,14 +81,9 @@ const AdminInvestmentDetails = () => {
       return;
     }
 
-    // Prevent a limit larger than the profit the investor has earned.
-    const maximumAllowed = Number(
-      addWithdrawable.totalInvestment ?? addWithdrawable.totalValue ?? 0,
-    );
-
-    if (amount > maximumAllowed) {
+    if (amount > remainingLimitCapacity) {
       message.warning(
-        `Withdrawal limit cannot be more than the investor's total of ${formatCurrency(maximumAllowed)}.`,
+        `Only ${formatCurrency(remainingLimitCapacity)} remains available to add to this withdrawal limit.`,
       );
       return;
     }
@@ -119,7 +136,7 @@ const AdminInvestmentDetails = () => {
     }
   };
 
-  const loadInvestmentDetails = async () => {
+  const loadInvestmentDetails = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetchInvestmentById(id);
@@ -131,9 +148,9 @@ const AdminInvestmentDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
-  const loadPlatformUsers = async () => {
+  const loadPlatformUsers = useCallback(async () => {
     try {
       setUsersLoading(true);
       const data = await fetchAllUsers();
@@ -144,17 +161,17 @@ const AdminInvestmentDetails = () => {
     } finally {
       setUsersLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (id) {
       loadInvestmentDetails();
     }
-  }, [id]);
+  }, [id, loadInvestmentDetails]);
 
   useEffect(() => {
     loadPlatformUsers();
-  }, []);
+  }, [loadPlatformUsers]);
 
   // const handleSourceChange = (source) => {
   //   setSelectedSource(source);
@@ -444,11 +461,6 @@ const AdminInvestmentDetails = () => {
   }
 };
 
-  const withdrawableAllocations = (selectedUser?.allocations || []).filter(
-    (allocation) =>
-      !allocation.isClosed && Number(allocation.remainingWithdrawable || 0) > 0,
-  );
-
   const removeInvestor = async (investor) => {
     const investmentId = id;
     const allocationId = investor.allocationId || investor._id;
@@ -470,6 +482,89 @@ const AdminInvestmentDetails = () => {
       message.error(
         error?.response?.data?.message || "Failed to remove investor.",
       );
+    }
+  };
+
+  const openPackageEditor = () => {
+    setPackageTitle(investmentDetails?.investment?.title || "");
+    setPackageTarget(
+      String(investmentDetails?.investment?.targetAmount || ""),
+    );
+    setPackageImage(null);
+    setIsEditPackageOpen(true);
+  };
+
+  const savePackageChanges = async () => {
+    if (
+      !packageTitle.trim() ||
+      !Number.isFinite(Number(packageTarget)) ||
+      Number(packageTarget) <= 0
+    ) {
+      message.error("Enter a valid title and target amount.");
+      return;
+    }
+
+    try {
+      setPackageSaving(true);
+      const formData = new FormData();
+      formData.append("title", packageTitle.trim());
+      formData.append("targetAmount", packageTarget);
+      if (packageImage) formData.append("image", packageImage);
+      await editInvestment(id, formData);
+      message.success("Investment updated successfully.");
+      setIsEditPackageOpen(false);
+      await loadInvestmentDetails();
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to update investment.",
+      );
+    } finally {
+      setPackageSaving(false);
+    }
+  };
+
+  const archivePackage = async () => {
+    try {
+      await archiveInvestmentPackage(id);
+      message.success("Investment archived successfully.");
+      await loadInvestmentDetails();
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to archive investment.",
+      );
+    }
+  };
+
+  const openPrincipalEditor = (investor) => {
+    setEditingAllocation(investor);
+    setEditedPrincipal(String(investor.principal || ""));
+  };
+
+  const savePrincipal = async () => {
+    const amount = Number(editedPrincipal);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      message.error("Investment amount must be greater than zero.");
+      return;
+    }
+
+    try {
+      setPrincipalSaving(true);
+      await updateInvestorAmount(
+        id,
+        editingAllocation.allocationId,
+        amount,
+      );
+      message.success("Investor amount updated successfully.");
+      setEditingAllocation(null);
+      setEditedPrincipal("");
+      await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to update investor amount.",
+      );
+    } finally {
+      setPrincipalSaving(false);
     }
   };
 
@@ -501,6 +596,7 @@ const AdminInvestmentDetails = () => {
             description="Are you sure you want to archive this investment package?"
             okText="Yes, Archive"
             cancelText="Cancel"
+            onConfirm={archivePackage}
           >
             <button className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 cursor-pointer">
               <HiOutlineArchiveBoxArrowDown size={13} />
@@ -508,7 +604,11 @@ const AdminInvestmentDetails = () => {
             </button>
           </Popconfirm>
 
-          <button className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 cursor-pointer">
+          <button
+            type="button"
+            onClick={openPackageEditor}
+            className="inline-flex items-center gap-1.5 text-xs text-blue-300 hover:text-blue-200 font-bold uppercase tracking-wider bg-blue-950/30 border border-blue-700/50 px-3 py-2 cursor-pointer"
+          >
             <FaRegEdit size={13} />
             Edit Package
           </button>
@@ -623,37 +723,45 @@ const AdminInvestmentDetails = () => {
                   </div>
 
                   <div className="col-span-2 text-right">
-                    {investmentDetails?.investment?.status === "completed" ? (
+                    <div className="flex flex-wrap justify-end gap-2">
+                    {investmentDetails?.investment?.status === "completed" && (
                       <button
                         onClick={() => {
                           setAddWithdrawable(investor);
-                          setWithdrawableLimit(
-                            String(investor.withdrawableLimit || 0),
-                          );
+                          setWithdrawableLimit("");
                           setIsLimitModalOpen(true);
                         }}
                         className="text-[10px] text-amber-400 hover:text-amber-300 font-bold uppercase cursor-pointer"
                       >
                         Set Limit
                       </button>
-                    ) : (
-                      <Popconfirm
-                        title="Remove investor?"
-                        description={`Are you sure you want to remove ${
-                          investor.user?.name || "this investor"
-                        } from this investment pool?`}
-                        okText="Yes, remove"
-                        cancelText="Cancel"
-                        okButtonProps={{
-                          danger: true,
-                        }}
-                        onConfirm={() => removeInvestor(investor)}
-                      >
-                        <button className="text-[10px] text-rose-500 hover:text-rose-400 font-bold uppercase cursor-pointer">
-                          Remove
-                        </button>
-                      </Popconfirm>
                     )}
+                    {investmentDetails?.investment?.status === "pending" && (
+                        <button
+                          type="button"
+                          onClick={() => openPrincipalEditor(investor)}
+                          className="inline-flex items-center gap-1 text-[10px] text-blue-300 hover:text-blue-200 font-bold uppercase cursor-pointer"
+                        >
+                          <Pencil size={12} /> Edit Amount
+                        </button>
+                    )}
+                    <Popconfirm
+                      title="Remove investor?"
+                      description={
+                        investor.sourceAllocation
+                          ? "This was reinvested capital. The principal will return to its original withdrawable balance."
+                          : "This was fresh capital. The allocation will be permanently removed."
+                      }
+                      okText="Yes, remove"
+                      cancelText="Cancel"
+                      okButtonProps={{ danger: true }}
+                      onConfirm={() => removeInvestor(investor)}
+                    >
+                      <button className="inline-flex items-center gap-1 text-[10px] text-rose-400 hover:text-rose-300 font-bold uppercase cursor-pointer">
+                        <UserMinus size={12} /> Remove
+                      </button>
+                    </Popconfirm>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -679,6 +787,7 @@ const AdminInvestmentDetails = () => {
 
                 <input
                   type="number"
+                  min="1"
                   required
                   value={inputProfitAmount}
                   onChange={(event) => setInputProfitAmount(event.target.value)}
@@ -698,6 +807,8 @@ const AdminInvestmentDetails = () => {
 
                   <input
                     type="number"
+                    min="0"
+                    max="100"
                     required
                     disabled={
                       investmentDetails?.investment?.status === "completed"
@@ -715,6 +826,8 @@ const AdminInvestmentDetails = () => {
 
                   <input
                     type="number"
+                    min="0"
+                    max="100"
                     required
                     disabled={
                       investmentDetails?.investment?.status === "completed"
@@ -860,7 +973,7 @@ const AdminInvestmentDetails = () => {
                 <input
                   type="number"
                   required
-                  min={0}
+                  min="1"
                   max={selectedSource === "profit" ? walletBalance : undefined}
                   value={newInvestorAmount}
                   onChange={handleAmountChange}
@@ -1058,22 +1171,28 @@ const AdminInvestmentDetails = () => {
 
             <input
               type="number"
-              min="0"
-              max={addWithdrawable?.totalInvestment - withdrawableLimit ?? 0}
+              min="1"
+              max={remainingLimitCapacity}
               value={withdrawableLimit}
-              placeholder="Enter withdrawable amount"
+              placeholder={`Maximum ${formatCurrency(remainingLimitCapacity)}`}
               onChange={(event) => setWithdrawableLimit(event.target.value)}
               className="w-full mt-3 px-3 py-2 bg-[#090A0F] border border-slate-700 text-white focus:outline-none focus:border-[#34D399]"
             />
 
-            <p className="mt-3 text-xs text-[#9CA3AF]">
-              Investor total:{" "}
+            <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+              <p className="text-[#9CA3AF]">
+                Limit already granted:{" "}
+                <span className="font-bold text-white">
+                  {formatCurrency(currentGrantedLimit)}
+                </span>
+              </p>
+              <p className="text-[#9CA3AF] text-right">
+              Remaining available:{" "}
               <span className="font-bold text-[#34D399]">
-                {formatCurrency(
-                  addWithdrawable?.totalInvestment - withdrawableLimit ?? 0,
-                )}
+                {formatCurrency(remainingLimitCapacity)}
               </span>
-            </p>
+              </p>
+            </div>
 
             <div className="flex justify-end gap-2 mt-5">
               <button
@@ -1083,7 +1202,7 @@ const AdminInvestmentDetails = () => {
                   setAddWithdrawable(null);
                   setWithdrawableLimit("");
                 }}
-                disabled={limitLoading}
+                disabled={limitLoading || remainingLimitCapacity <= 0}
                 className="px-4 py-2 text-xs font-bold bg-slate-700 hover:bg-slate-600"
               >
                 Cancel
@@ -1101,6 +1220,79 @@ const AdminInvestmentDetails = () => {
           </div>
         </div>
       )}
+
+      <Modal
+        title="Edit Investment"
+        open={isEditPackageOpen}
+        onCancel={() => setIsEditPackageOpen(false)}
+        onOk={savePackageChanges}
+        confirmLoading={packageSaving}
+        okText="Save Changes"
+      >
+        <div className="space-y-4 pt-3">
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold">Investment title</span>
+            <input
+              type="text"
+              required
+              value={packageTitle}
+              onChange={(event) => setPackageTitle(event.target.value)}
+              className="w-full border border-slate-300 px-3 py-2"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold">
+              Replace image (optional)
+            </span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={(event) =>
+                setPackageImage(event.target.files?.[0] || null)
+              }
+              className="w-full border border-slate-300 px-3 py-2 text-xs"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold">Target amount</span>
+            <input
+              type="number"
+              min="1"
+              required
+              value={packageTarget}
+              onChange={(event) => setPackageTarget(event.target.value)}
+              className="w-full border border-slate-300 px-3 py-2"
+            />
+          </label>
+        </div>
+      </Modal>
+
+      <Modal
+        title={`Edit ${editingAllocation?.user?.name || "Investor"} Amount`}
+        open={Boolean(editingAllocation)}
+        onCancel={() => {
+          setEditingAllocation(null);
+          setEditedPrincipal("");
+        }}
+        onOk={savePrincipal}
+        confirmLoading={principalSaving}
+        okText="Update Amount"
+      >
+        <div className="space-y-3 pt-3">
+          <p className="text-xs text-slate-500">
+            {editingAllocation?.sourceAllocation
+              ? "This allocation came from another investment’s withdrawable balance. Any decrease returns there; any increase is deducted from the same source."
+              : "This allocation uses fresh capital. Reducing it removes the difference; increasing it adds fresh capital."}
+          </p>
+          <input
+            type="number"
+            min="1"
+            value={editedPrincipal}
+            onChange={(event) => setEditedPrincipal(event.target.value)}
+            className="w-full border border-slate-300 px-3 py-2"
+          />
+        </div>
+      </Modal>
     </motion.div>
   );
 };

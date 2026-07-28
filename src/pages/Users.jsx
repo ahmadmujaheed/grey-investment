@@ -10,7 +10,7 @@ import {
   UserPlus,
   Users as UsersIcon,
 } from "lucide-react";
-import { message, Popconfirm, Tag } from "antd";
+import { Input, message, Popconfirm, Popover, Tag } from "antd";
 import { motion, AnimatePresence } from "motion/react";
 
 import {
@@ -19,6 +19,7 @@ import {
   createUser,
   resetUserPassword,
   updateUser,
+  deleteUser,
 } from "../api/userApi";
 
 const formatCurrency = (amount = 0) =>
@@ -79,7 +80,8 @@ const Users = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   // const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const isEditing = editingUser !== null;
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deletePopoverOpen, setDeletePopoverOpen] = useState(false);
 
   const loadUsersData = async () => {
     try {
@@ -98,7 +100,10 @@ const Users = () => {
   };
 
   useEffect(() => {
-    loadUsersData();
+    fetchAllUsers()
+      .then((data) => setUsers(data?.users || []))
+      .catch(() => message.error("Failed to load user data."))
+      .finally(() => setLoading(false));
   }, []);
 
   const openUserDetailsModal = async (user) => {
@@ -125,6 +130,8 @@ const Users = () => {
   const closeUserDetailsModal = () => {
     setIsUserDetailsModalOpen(false);
     setSelectedUser(null);
+    setDeletePassword("");
+    setDeletePopoverOpen(false);
   };
 
   // const handleCreateUser = async (event) => {
@@ -243,6 +250,36 @@ const Users = () => {
       message.error(
         error?.response?.data?.message || "Failed to reset password.",
       );
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    const userId = selectedUser?._id || selectedUser?.id;
+
+    if (!userId) {
+      message.error("User ID is missing.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      if (!deletePassword) {
+        message.error("Enter your administrator password.");
+        return;
+      }
+
+      await deleteUser(userId, deletePassword);
+      message.success("User and related records deleted successfully.");
+      setDeletePassword("");
+      setDeletePopoverOpen(false);
+      closeUserDetailsModal();
+      await loadUsersData();
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to delete user.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -544,6 +581,57 @@ const Users = () => {
                       >
                         Edit User
                       </button>
+
+                      <Popover
+                        trigger="click"
+                        open={deletePopoverOpen}
+                        onOpenChange={(open) => {
+                          setDeletePopoverOpen(open);
+                          if (!open) setDeletePassword("");
+                        }}
+                        title="Delete user permanently?"
+                        content={
+                          <div className="w-72 space-y-3">
+                            <p className="text-xs text-slate-600">
+                              Allocations, withdrawals, and transactions for
+                              this user will be deleted. Enter your admin
+                              password to continue.
+                            </p>
+                            <Input.Password
+                              value={deletePassword}
+                              onChange={(event) =>
+                                setDeletePassword(event.target.value)
+                              }
+                              placeholder="Administrator password"
+                              onPressEnter={handleDeleteUser}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setDeletePopoverOpen(false)}
+                                className="px-3 py-1.5 text-xs border border-slate-300"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isSubmitting || !deletePassword}
+                                onClick={handleDeleteUser}
+                                className="px-3 py-1.5 text-xs bg-rose-600 text-white disabled:opacity-50"
+                              >
+                                {isSubmitting ? "Deleting..." : "Delete User"}
+                              </button>
+                            </div>
+                          </div>
+                        }
+                      >
+                        <button
+                          disabled={isSubmitting}
+                          className="px-3 py-1.5 border border-rose-500/40 bg-rose-950/20 text-[10px] font-bold uppercase text-rose-400 hover:bg-rose-950/40 disabled:opacity-50 cursor-pointer"
+                        >
+                          Delete User
+                        </button>
+                      </Popover>
                     </div>
                   </div>
 
@@ -689,7 +777,7 @@ const Users = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => !isSubmitting && setIsModalOpen(false)}
+              onClick={() => !isSubmitting && setIsCreateModalOpen(false)}
               className="absolute inset-0 bg-[#090A0F]/70 backdrop-blur-xs"
             />
 

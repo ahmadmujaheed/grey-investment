@@ -2,31 +2,23 @@ import { useState, useEffect } from "react";
 import {
   Plus,
   Users,
-  ArrowLeft,
   FolderPlus,
-  UserPlus,
   UploadCloud,
   Trash2,
-  Coins,
-  Percent,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { Upload, message, Popconfirm, Skeleton, Select, Tag } from "antd";
+import { Input, Upload, message, Popconfirm, Popover, Skeleton } from "antd";
 import { HiOutlineArchiveBoxArrowDown } from "react-icons/hi2";
-import { IoCloseOutline } from "react-icons/io5";
 import { FaRegEdit } from "react-icons/fa";
 
 // 🔌 Import your live central API layer operations
 import {
   fetchAllInvestments,
   createInvestment,
-  distributeInvestmentProfits,
   archiveInvestmentPackage,
-  fetchAllUsers,
   fetchArchivedInvestments,
-  restoreInvestmentPackage,
   editInvestment,
-  updateInvestmentStatus,
+  deleteInvestment,
 } from "../api/investmentApi";
 import { Link } from "react-router-dom";
 
@@ -38,13 +30,9 @@ const fadeInUp = {
 const Investment = () => {
   // Core application data states
   const [packages, setPackages] = useState([]);
-  const [users, setUsers] = useState([]); // 👥 Stores platform users registry
   const [loading, setLoading] = useState(true);
 
-  const [distribute, setDistribute] = useState(false);
-  const [usersLoading, setUsersLoading] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState(null);
 
   // Creation form data state parameters
   const [newName, setNewName] = useState("");
@@ -53,32 +41,18 @@ const Investment = () => {
   const [previewImageUrl, setPreviewImageUrl] = useState("");
 
   // Account linkage tracking inputs
-  const [targetUserId, setTargetUserId] = useState(undefined);
-  const [newInvestorAmount, setNewInvestorAmount] = useState("");
 
   // Profit distribution context logic parameters
-  const [inputProfitAmount, setInputProfitAmount] = useState("");
-
-  const [investmentStatus, setInvestmentStatus] = useState("");
 
   const [gettingArchived, setGettingArchived] = useState(false);
   const [gettingActive, setGettingActive] = useState(false);
 
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-  });
-
-  const [isRemoving, setIsRemoving] = useState(false);
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
-  const [companyPercent, setCompanyPercent] = useState("");
-  const [investorPercent, setInvestorPercent] = useState("");
-
-  const [selectedSource, setSelectedSource] = useState("capital");
-  const [availableProfit, setAvailableProfit] = useState(0);
 
   const openEditModal = (pkg) => {
     setNewName(pkg.title);
@@ -98,7 +72,7 @@ const Investment = () => {
       // If it returns the array directly, keep as is.
       // setPackages(Array.isArray(response) ? response : response?.investments || []);
       setPackages(response?.investments || []);
-    } catch (error) {
+    } catch {
       message.error("Failed to load investment package configurations.");
     } finally {
       setLoading(false);
@@ -112,7 +86,12 @@ const Investment = () => {
   // console.log(users);
 
   useEffect(() => {
-    loadPlatformAssets(true);
+    fetchAllInvestments()
+      .then((response) => setPackages(response?.investments || []))
+      .catch(() =>
+        message.error("Failed to load investment package configurations."),
+      )
+      .finally(() => setLoading(false));
   }, []);
 
   // Ant Design Custom Dragger Pipeline Configurer
@@ -142,6 +121,12 @@ const Investment = () => {
 
   const handleSaveInvestment = async (e) => {
     e.preventDefault();
+
+    if (!newName.trim() || !Number.isFinite(Number(newAmount)) || Number(newAmount) <= 0) {
+      message.error("Enter a valid name and a target amount greater than zero.");
+      return;
+    }
+
     setLoading(true);
     try {
       const formData = new FormData();
@@ -150,14 +135,8 @@ const Investment = () => {
       if (rawUploadFile) formData.append("image", rawUploadFile);
 
       if (isEditMode) {
-        // 1. Await the response from your backend
-        const response = await editInvestment(editingId, formData);
+        await editInvestment(editingId, formData);
         message.success("Investment updated!");
-
-        // 2. CRITICAL: Update the detailed view state directly
-        if (selectedPackage && selectedPackage._id === editingId) {
-          setSelectedPackage(response.package); // This forces the progress bar to recalculate
-        }
       } else {
         await createInvestment(formData);
         message.success("Investment created!");
@@ -169,8 +148,34 @@ const Investment = () => {
       // Close modal and reset
       setIsCreateOpen(false);
       setIsEditMode(false);
-    } catch (error) {
+      setEditingId(null);
+      setRawUploadFile(null);
+      setPreviewImageUrl("");
+    } catch {
       message.error("Operation failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePackage = async (investmentId) => {
+    if (!deletePassword) {
+      message.error("Enter your administrator password.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await deleteInvestment(investmentId, deletePassword);
+      message.success("Investment and its related records were deleted.");
+      setDeletePassword("");
+      setDeleteTargetId(null);
+
+      await loadPlatformAssets();
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Failed to delete investment.",
+      );
     } finally {
       setLoading(false);
     }
@@ -183,11 +188,8 @@ const Investment = () => {
       await archiveInvestmentPackage(investmentId);
       message.warning("Investment package tier removed from platform catalog.");
 
-      if (selectedPackage && selectedPackage._id === investmentId) {
-        setSelectedPackage(null);
-      }
       await loadPlatformAssets(true);
-    } catch (error) {
+    } catch {
       message.error("Failed to remove investment tier.");
     } finally {
       setLoading(false);
@@ -203,7 +205,7 @@ const Investment = () => {
       // Ensure we always set an array
       setPackages(response?.investments || []);
       // setInvestmentStatus("archived");
-    } catch (error) {
+    } catch {
       message.error("Failed to load archived investment packages.");
     } finally {
       setGettingArchived(false);
@@ -217,7 +219,7 @@ const Investment = () => {
       // Ensure we always set an array
       setPackages(response?.investments || []);
       // setInvestmentStatus("active");
-    } catch (error) {
+    } catch {
       message.error("Failed to load active investment packages.");
     } finally {
       setGettingActive(false);
@@ -225,23 +227,6 @@ const Investment = () => {
   };
 
  
-  const handleStatusChange = async (newStatus) => {
-    try {
-      setLoading(true);
-      await updateInvestmentStatus(selectedPackage._id, newStatus);
-
-      setSelectedPackage((prev) => ({ ...prev, status: newStatus }));
-
-      message.success(`Status set to ${newStatus}`);
-    } catch (error) {
-      message.error("Status update failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // console.log(selectedPackage);
-
   return (
     <div className="space-y-6 bg-[#1F1F1F] min-h-screen text-[#9CA3AF]">
       {/* CASE A: ROOT GALLERY GRID INTERFACE VIEW */}
@@ -261,8 +246,11 @@ const Investment = () => {
               <button
                 onClick={() => {
                   setIsEditMode(false);
+                  setEditingId(null);
                   setNewName("");
                   setNewAmount("");
+                  setRawUploadFile(null);
+                  setPreviewImageUrl("");
                   setIsCreateOpen(true);
                 }}
                 className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 rounded-none transition-colors shrink-0 cursor-pointer"
@@ -335,37 +323,6 @@ const Investment = () => {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 rounded-none"
                       />
 
-                      <div
-                        className="absolute top-2 right-2 z-10"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {pkg.status !== "archived" && (
-                          <div className="flex items-center gap-3">
-                            <Popconfirm
-                              title="Archive Investment Package"
-                              description="Are you absolutely sure you want to archive this investment package?"
-                              onConfirm={() => handleArchivePackage(pkg._id)}
-                              okText="Yes, Archive"
-                              cancelText="Cancel"
-                              placement="bottomRight"
-                              okButtonProps={{
-                                danger: true,
-                                className:
-                                  "bg-rose-600 hover:bg-rose-500 rounded-none text-xs font-semibold",
-                              }}
-                              cancelButtonProps={{
-                                className:
-                                  "border-slate-700 text-slate-300 hover:text-white rounded-none text-xs",
-                              }}
-                            >
-                              <button className="inline-flex items-center gap-1.5 text-xs text-rose-400 hover:text-rose-300 font-bold uppercase tracking-wider bg-rose-950/20 border border-rose-900/40 px-3 py-1 transition-colors cursor-pointer">
-                                <HiOutlineArchiveBoxArrowDown size={13} />
-                              </button>
-                            </Popconfirm>
-
-                          </div>
-                        )}
-                      </div>
                     </div>
 
                     <div className="p-4 space-y-3">
@@ -420,7 +377,82 @@ const Investment = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 pt-0">
+                  <div className="px-4 pb-3 grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(pkg)}
+                      className="inline-flex items-center justify-center gap-1.5 py-2 bg-blue-500/15 border border-blue-500/40 text-blue-300 hover:bg-blue-500/25 text-[10px] font-bold uppercase"
+                    >
+                      <FaRegEdit size={14} /> Edit
+                    </button>
+
+                    <Popconfirm
+                      title="Archive investment?"
+                      description="The investment will move to the archive list."
+                      onConfirm={() => handleArchivePackage(pkg._id)}
+                      okText="Archive"
+                      cancelText="Cancel"
+                    >
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center gap-1.5 py-2 bg-amber-500/15 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 text-[10px] font-bold uppercase"
+                      >
+                        <HiOutlineArchiveBoxArrowDown size={14} /> Archive
+                      </button>
+                    </Popconfirm>
+
+                    <Popover
+                      trigger="click"
+                      open={deleteTargetId === pkg._id}
+                      onOpenChange={(open) => {
+                        setDeleteTargetId(open ? pkg._id : null);
+                        if (!open) setDeletePassword("");
+                      }}
+                      title="Delete investment permanently?"
+                      content={
+                        <div className="w-72 space-y-3">
+                          <p className="text-xs text-slate-600">
+                            All allocations, withdrawals, and transactions for
+                            this investment will be deleted. Enter your admin
+                            password to continue.
+                          </p>
+                          <Input.Password
+                            value={deletePassword}
+                            onChange={(event) =>
+                              setDeletePassword(event.target.value)
+                            }
+                            placeholder="Administrator password"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setDeleteTargetId(null)}
+                              className="px-3 py-1.5 text-xs border border-slate-300"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={loading || !deletePassword}
+                              onClick={() => handleDeletePackage(pkg._id)}
+                              className="px-3 py-1.5 text-xs bg-rose-600 text-white disabled:opacity-50"
+                            >
+                              {loading ? "Deleting..." : "Delete"}
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    >
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center gap-1.5 py-2 bg-rose-500/15 border border-rose-500/40 text-rose-300 hover:bg-rose-500/25 text-[10px] font-bold uppercase"
+                      >
+                        <Trash2 size={14} /> Delete
+                      </button>
+                    </Popover>
+                  </div>
+
+                  <div className="px-4 pb-4">
                     <Link to={`/dashboard/investment/${pkg?._id}`}>
                       <div className="w-full text-center py-2 bg-[#090A0F] rounded-none text-xs font-bold text-[#9CA3AF] group-hover:bg-[#34D399] group-hover:text-[#090A0F] transition-colors">
                         View Roster & Audit
@@ -485,6 +517,7 @@ const Investment = () => {
                 </label>
                 <input
                   type="number"
+                  min="1"
                   required
                   disabled={loading}
                   value={newAmount}
