@@ -273,7 +273,13 @@ const handleSubmitWithdrawal = async () => {
             } border p-5 rounded-xl shadow-md flex flex-col justify-between transition-colors duration-200`}
           >
             <div className="flex justify-between items-center mb-3">
-              <span className="text-[10px] text-[#9CA3AF] uppercase font-bold tracking-wider">
+              <span
+                className={`text-[10px] uppercase font-bold tracking-wider ${
+                  item.label === "Outstanding Balance"
+                    ? "text-red-400"
+                    : "text-[#9CA3AF]"
+                }`}
+              >
                 {item.label}
               </span>
               <item.icon size={16} className={item.color} />

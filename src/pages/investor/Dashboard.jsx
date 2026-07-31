@@ -186,7 +186,11 @@ const Dashboard = () => {
             }`}
           >
             <div>
-              <span className="text-[10px] text-[#9CA3AF] uppercase tracking-wider font-bold block">
+              <span
+                className={`text-[10px] uppercase tracking-wider font-bold block ${
+                  item.danger ? "text-red-400" : "text-[#9CA3AF]"
+                }`}
+              >
                 {item.label}
               </span>
               <p
