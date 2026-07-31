@@ -10,7 +10,7 @@ import {
   UserPlus,
   Users as UsersIcon,
 } from "lucide-react";
-import { Input, message, Popconfirm, Popover, Tag } from "antd";
+import { Input, message, Popover, Tag } from "antd";
 import { motion, AnimatePresence } from "motion/react";
 
 import {
@@ -62,6 +62,13 @@ const getAvailableBalance = (allocation) =>
       0,
   );
 
+const getOutstandingBalance = (allocations = []) =>
+  allocations.reduce(
+    (sum, allocation) =>
+      sum + Number(allocation?.advanceOutstanding || 0),
+    0,
+  );
+
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +89,9 @@ const Users = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [deletePassword, setDeletePassword] = useState("");
   const [deletePopoverOpen, setDeletePopoverOpen] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPopoverOpen, setResetPopoverOpen] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const loadUsersData = async () => {
     try {
@@ -132,6 +142,8 @@ const Users = () => {
     setSelectedUser(null);
     setDeletePassword("");
     setDeletePopoverOpen(false);
+    setResetPassword("");
+    setResetPopoverOpen(false);
   };
 
   // const handleCreateUser = async (event) => {
@@ -242,14 +254,27 @@ const Users = () => {
       return;
     }
 
-    try {
-      await resetUserPassword({ userId });
+    if (resetPassword.length < 8) {
+      message.error("Temporary password must be at least 8 characters.");
+      return;
+    }
 
-      message.success("Password reset successfully.");
+    try {
+      setResettingPassword(true);
+      const response = await resetUserPassword({
+        userId,
+        temporaryPassword: resetPassword,
+      });
+
+      message.success(response.message || "Password reset successfully.");
+      setResetPassword("");
+      setResetPopoverOpen(false);
     } catch (error) {
       message.error(
         error?.response?.data?.message || "Failed to reset password.",
       );
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -563,17 +588,57 @@ const Users = () => {
                         {selectedUser?.role || "user"}
                       </Tag>
 
-                      <Popconfirm
-                        title="Reset user password?"
-                        description="The password will be reset to the default password."
-                        okText="Reset"
-                        cancelText="Cancel"
-                        onConfirm={handleResetPassword}
+                      <Popover
+                        trigger="click"
+                        open={resetPopoverOpen}
+                        onOpenChange={(open) => {
+                          setResetPopoverOpen(open);
+                          if (!open) setResetPassword("");
+                        }}
+                        title="Reset user password"
+                        content={
+                          <div className="w-72 space-y-3">
+                            <p className="text-xs text-slate-600">
+                              Enter a temporary password. The user will be
+                              required to replace it after signing in.
+                            </p>
+                            <Input.Password
+                              value={resetPassword}
+                              onChange={(event) =>
+                                setResetPassword(event.target.value)
+                              }
+                              placeholder="At least 8 characters"
+                              onPressEnter={handleResetPassword}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setResetPopoverOpen(false)}
+                                className="px-3 py-1.5 text-xs border border-slate-300"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                disabled={
+                                  resettingPassword ||
+                                  resetPassword.length < 8
+                                }
+                                onClick={handleResetPassword}
+                                className="px-3 py-1.5 text-xs bg-amber-500 text-slate-950 disabled:opacity-50"
+                              >
+                                {resettingPassword
+                                  ? "Resetting..."
+                                  : "Reset Password"}
+                              </button>
+                            </div>
+                          </div>
+                        }
                       >
                         <button className="px-3 py-1.5 border border-rose-500/40 bg-rose-950/20 text-[10px] font-bold uppercase text-rose-400 hover:bg-rose-950/40 cursor-pointer">
                           Reset Password
                         </button>
-                      </Popconfirm>
+                      </Popover>
 
                       <button
                         onClick={() => editUser()}
@@ -645,6 +710,18 @@ const Users = () => {
                       </p>
                     </div>
 
+                    <div className="border border-red-500/30 bg-red-950/20 p-3">
+                      <p className="text-[10px] uppercase font-bold text-red-300">
+                        Outstanding Balance
+                      </p>
+                      <p className="mt-1 text-sm font-mono font-bold text-red-400">
+                        {formatCurrency(
+                          selectedUser?.outstandingBalance ??
+                            getOutstandingBalance(selectedUser?.allocations),
+                        )}
+                      </p>
+                    </div>
+
                     <div className="border border-slate-800 bg-[#090A0F] p-3">
                       <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
                         Withdrawable Balance
@@ -686,6 +763,7 @@ const Users = () => {
                           <th className="px-4 py-3 text-right">
                             Available Balance
                           </th>
+                          <th className="px-4 py-3 text-right">Outstanding</th>
                           <th className="px-4 py-3 text-right">Reinvest</th>
                           <th className="px-4 py-3 text-right">Status</th>
                         </tr>
@@ -741,6 +819,11 @@ const Users = () => {
                               <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">
                                 {formatCurrency(
                                   getAvailableBalance(allocation),
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono font-bold text-red-400">
+                                {formatCurrency(
+                                  allocation?.advanceOutstanding || 0,
                                 )}
                               </td>
                               <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">

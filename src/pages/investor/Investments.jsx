@@ -62,12 +62,6 @@ const Investments = () => {
   // Adjust handleWithdrawal code wrapper as needed
   const handleWithdraw = async (e) => {
     e.preventDefault();
-    if (formData.amount > (selectedInv?.availableToWithdraw || 0)) {
-      message.error(
-        "Withdrawal amount cannot exceed your available withdrawable balance.",
-      );
-      return;
-    }
     // ... rest of your withdraw flow execution
   };
 
@@ -199,6 +193,19 @@ const Investments = () => {
                             ₦{(inv.withdrawableLimit || 0).toLocaleString()}
                           </span>
                         </div>
+                        {Number(inv.advanceOutstanding || 0) > 0 && (
+                          <div className="flex justify-between items-center text-xs px-1 border border-red-500/30 bg-red-950/20 p-2 rounded">
+                            <span className="text-red-300 font-medium">
+                              Outstanding Balance:
+                            </span>
+                            <span className="text-red-400 font-bold">
+                              ₦
+                              {Number(
+                                inv.advanceOutstanding || 0,
+                              ).toLocaleString()}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Card Action Footer */}

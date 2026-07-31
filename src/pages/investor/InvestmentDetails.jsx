@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Coins,
   X,
+  TriangleAlert,
 } from "lucide-react";
 import { Skeleton, Popover, Button, message } from "antd";
 import { fetchInvestmentById } from "../../api/investmentApi";
@@ -155,6 +156,8 @@ const handleSubmitWithdrawal = async () => {
 
   // Maps properties seamlessly into dynamic card blocks (now containing 6 cards)
  const availableBalance = details.myInvestment?.availableBalance || 0;
+ const outstandingBalance =
+   Number(details.myInvestment?.advanceOutstanding || 0);
 
   const metrics = [
     {
@@ -184,6 +187,16 @@ const handleSubmitWithdrawal = async () => {
       customBg: availableBalance === 0 
         ? "bg-rose-950/40 border-rose-500/30" 
         : "bg-emerald-950/20 border-emerald-500/20",
+    },
+    {
+      label: "Outstanding Balance",
+      val: outstandingBalance,
+      icon: TriangleAlert,
+      color: "text-red-400",
+      customBg:
+        outstandingBalance > 0
+          ? "bg-red-950/30 border-red-500/40"
+          : "bg-[#1F2937] border-slate-800/80",
     },
     {
       label: "Withdrawable Limit",
@@ -318,11 +331,13 @@ const handleSubmitWithdrawal = async () => {
                   }
                 />
                 {!loading &&
-                  Number(formData.amount) >
-                    (details.myInvestment?.withdrawableLimit || 0) && (
-                    <p className="text-rose-400 text-[10px] mt-1.5 font-medium">
-                      Amount exceeds your available limit allocation:{" "}
-                      {formatCurrency(details.myInvestment?.withdrawableLimit)}
+                  Number(formData.amount) > availableBalance && (
+                    <p className="text-amber-400 text-[10px] mt-1.5 font-medium">
+                      If approved,{" "}
+                      {formatCurrency(
+                        Number(formData.amount) - availableBalance,
+                      )}{" "}
+                      will be added to your outstanding balance.
                     </p>
                   )}
               </div>

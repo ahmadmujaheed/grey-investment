@@ -120,16 +120,14 @@ const Requests = () => {
       setActionLoadingId(requestId);
 
       if (action === "approve") {
-        await approveWithdrawalApi(requestId);
+        const result = await approveWithdrawalApi(requestId);
+        message.success(
+          result?.message || "Withdrawal approved successfully.",
+        );
       } else {
         await rejectWithdrawalApi(requestId);
+        message.success("Withdrawal rejected successfully.");
       }
-
-      message.success(
-        action === "approve"
-          ? "Withdrawal approved successfully."
-          : "Withdrawal rejected successfully.",
-      );
 
       closeUserDetailsModal();
       await loadData();
@@ -433,6 +431,22 @@ const Requests = () => {
                         </p>
                       </div>
                       <div>
+                        <p className="text-[#9CA3AF]">
+                          Advance if Approved
+                        </p>
+                        <p className="text-lg font-bold text-red-400 font-mono mt-0.5">
+                          {formatCurrency(
+                            Math.max(
+                              0,
+                              Number(selectedRequest.amount || 0) -
+                                getAvailableBalance(
+                                  selectedRequest.allocation,
+                                ),
+                            ),
+                          )}
+                        </p>
+                      </div>
+                      <div>
                         <p className="text-[#9CA3AF]">Bank/Account Name</p>
                         <p className="text-white font-medium mt-0.5">
                           {selectedRequest.bankName} — {selectedRequest.accountName}
@@ -466,6 +480,25 @@ const Requests = () => {
 
                         <Popconfirm
                           title="Approve withdrawal request?"
+                          description={
+                            Math.max(
+                              0,
+                              Number(selectedRequest.amount || 0) -
+                                getAvailableBalance(
+                                  selectedRequest.allocation,
+                                ),
+                            ) > 0
+                              ? `${formatCurrency(
+                                  Math.max(
+                                    0,
+                                    Number(selectedRequest.amount || 0) -
+                                      getAvailableBalance(
+                                        selectedRequest.allocation,
+                                      ),
+                                  ),
+                                )} will become an outstanding balance.`
+                              : "The full amount is covered by the available balance."
+                          }
                           onConfirm={() => handleAction(selectedRequest._id, "approve")}
                           okText="Approve"
                           cancelText="Cancel"

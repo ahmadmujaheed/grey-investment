@@ -720,6 +720,12 @@ const AdminInvestmentDetails = () => {
                   </div>
                   <div className="col-span-2 text-right text-xs font-mono font-bold text-blue-400">
                     {formatCurrency(investor.withdrawableLimit || 0)}
+                    {Number(investor.advanceOutstanding || 0) > 0 && (
+                      <p className="mt-1 text-[10px] text-red-400">
+                        Outstanding:{" "}
+                        {formatCurrency(investor.advanceOutstanding)}
+                      </p>
+                    )}
                   </div>
 
                   <div className="col-span-2 text-right">
@@ -1193,6 +1199,39 @@ const AdminInvestmentDetails = () => {
               </span>
               </p>
             </div>
+
+            {Number(addWithdrawable?.advanceOutstanding || 0) > 0 && (
+              <div className="mt-3 border border-red-500/30 bg-red-950/20 p-3 text-xs">
+                <p className="text-red-300">
+                  Outstanding balance:{" "}
+                  <span className="font-bold text-red-400">
+                    {formatCurrency(addWithdrawable.advanceOutstanding)}
+                  </span>
+                </p>
+                <p className="mt-1 text-[#9CA3AF]">
+                  This addition repays{" "}
+                  <span className="font-bold text-red-300">
+                    {formatCurrency(
+                      Math.min(
+                        Number(withdrawableLimit || 0),
+                        Number(addWithdrawable.advanceOutstanding || 0),
+                      ),
+                    )}
+                  </span>
+                  . The user receives{" "}
+                  <span className="font-bold text-[#34D399]">
+                    {formatCurrency(
+                      Math.max(
+                        0,
+                        Number(withdrawableLimit || 0) -
+                          Number(addWithdrawable.advanceOutstanding || 0),
+                      ),
+                    )}
+                  </span>{" "}
+                  as available balance.
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-2 mt-5">
               <button

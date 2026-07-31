@@ -7,6 +7,7 @@ import {
   TrendingUp,
   HandCoins,
   Clock3,
+  TriangleAlert,
 } from "lucide-react";
 
 import { motion } from "motion/react";
@@ -120,6 +121,15 @@ const DashboardCards = ({ cards, loading }) => {
       color: "text-orange-400",
       bg: "bg-orange-500/10",
       description: "Approved withdrawals",
+    },
+
+    {
+      title: "Outstanding Balances",
+      value: formatMoney(cards?.totalOutstandingBalance || 0),
+      icon: TriangleAlert,
+      color: "text-red-400",
+      bg: "bg-red-500/10",
+      description: `${cards?.usersWithOutstandingBalance || 0} investor(s) with advances`,
     },
 
     {

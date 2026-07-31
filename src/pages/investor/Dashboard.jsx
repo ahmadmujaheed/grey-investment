@@ -8,6 +8,7 @@ import {
   Eye,
   ArrowUpRight,
   DollarSign,
+  TriangleAlert,
 } from "lucide-react";
 import { Skeleton } from "antd";
 import { useAuthStore } from "../../store/useAuthStore";
@@ -32,6 +33,7 @@ const Dashboard = () => {
       availableBalance: 0,
       completedInvestments: 0,
       pendingWithdrawals: 0,
+      outstandingBalance: 0,
     },
     recentInvestments: [],
     recentTransactions: [],
@@ -67,6 +69,7 @@ const Dashboard = () => {
             availableBalance: 0,
             completedInvestments: 0,
             pendingWithdrawals: 0,
+            outstandingBalance: 0,
           },
           recentInvestments: result.recentInvestments || [],
           recentTransactions: result.recentTransactions || [],
@@ -150,6 +153,12 @@ const Dashboard = () => {
             icon: <Wallet size={18} className="text-[#34D399]" />,
           },
           {
+            label: "Outstanding Balance",
+            value: formatCurrency(cards?.outstandingBalance),
+            icon: <TriangleAlert size={18} className="text-red-400" />,
+            danger: true,
+          },
+          {
             label: "Active Pools",
             value: cards?.activeInvestments || 0,
             icon: <TrendingUp size={18} className="text-blue-400" />,
@@ -170,13 +179,23 @@ const Dashboard = () => {
         ].map((item, index) => (
           <div
             key={index}
-            className="border border-slate-800 bg-[#1F2937] p-5 rounded-xl flex items-center justify-between shadow-md"
+            className={`border p-5 rounded-xl flex items-center justify-between shadow-md ${
+              item.danger && Number(cards?.outstandingBalance || 0) > 0
+                ? "border-red-500/40 bg-red-950/20"
+                : "border-slate-800 bg-[#1F2937]"
+            }`}
           >
             <div>
               <span className="text-[10px] text-[#9CA3AF] uppercase tracking-wider font-bold block">
                 {item.label}
               </span>
-              <p className="mt-1 text-xl font-bold text-white">{item.value}</p>
+              <p
+                className={`mt-1 text-xl font-bold ${
+                  item.danger ? "text-red-400" : "text-white"
+                }`}
+              >
+                {item.value}
+              </p>
             </div>
             <div className="p-2.5 bg-[#090A0F]/50 border border-slate-800 rounded-lg">
               {item.icon}
