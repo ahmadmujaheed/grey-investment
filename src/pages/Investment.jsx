@@ -21,6 +21,10 @@ import {
   deleteInvestment,
 } from "../api/investmentApi";
 import { Link } from "react-router-dom";
+import {
+  formatCurrencyInput,
+  sanitizeCurrencyInput,
+} from "../utils/currencyInput";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 15 },
@@ -516,13 +520,15 @@ const Investment = () => {
                   Target Capital Size Ceiling (₦)
                 </label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="numeric"
                   required
                   disabled={loading}
-                  value={newAmount}
-                  onChange={(e) => setNewAmount(e.target.value)}
-                  placeholder="e.g. 10000000"
+                  value={formatCurrencyInput(newAmount)}
+                  onChange={(e) =>
+                    setNewAmount(sanitizeCurrencyInput(e.target.value))
+                  }
+                  placeholder="e.g. 10,000,000"
                   className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 rounded-none font-semibold text-white focus:outline-none focus:border-[#3B82F6] transition-all disabled:opacity-50"
                 />
               </div>
