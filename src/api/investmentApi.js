@@ -93,6 +93,14 @@ export const editInvestment = async (investmentId, data) => {
   return response.data;
 };
 
+export const resetCompletedInvestment = async (investmentId, password) => {
+  const response = await apiClient.patch(
+    `/investments/${investmentId}/reset-completed`,
+    { password },
+  );
+  return response.data;
+};
+
 export const deleteInvestment = async (investmentId, password) => {
   const response = await apiClient.delete(`/investments/${investmentId}`, {
     data: { password },

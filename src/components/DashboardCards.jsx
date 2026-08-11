@@ -7,7 +7,6 @@ import {
   TrendingUp,
   HandCoins,
   Clock3,
-  TriangleAlert,
 } from "lucide-react";
 
 import { motion } from "motion/react";
@@ -124,16 +123,6 @@ const DashboardCards = ({ cards, loading }) => {
     },
 
     {
-      title: "Outstanding Balances",
-      value: formatMoney(cards?.totalOutstandingBalance || 0),
-      icon: TriangleAlert,
-      color: "text-red-400",
-      bg: "bg-red-500/10",
-      danger: true,
-      description: `${cards?.usersWithOutstandingBalance || 0} investor(s) with advances`,
-    },
-
-    {
       title: "Pending Withdrawals",
       value: cards?.pendingWithdrawals || 0,
       icon: Clock3,
@@ -233,19 +222,11 @@ const DashboardCards = ({ cards, loading }) => {
           >
             <div className="flex justify-between items-start">
               <div>
-                <p
-                  className={`text-xs uppercase tracking-wider ${
-                    item.danger ? "text-red-400" : "text-slate-400"
-                  }`}
-                >
+                <p className="text-xs uppercase tracking-wider text-slate-400">
                   {item.title}
                 </p>
 
-                <h2
-                  className={`text-2xl font-bold mt-3 ${
-                    item.danger ? "text-red-400" : "text-white"
-                  }`}
-                >
+                <h2 className="text-2xl font-bold mt-3 text-white">
                   {item.value}
                 </h2>
 

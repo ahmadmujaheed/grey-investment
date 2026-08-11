@@ -62,13 +62,6 @@ const getAvailableBalance = (allocation) =>
       0,
   );
 
-const getOutstandingBalance = (allocations = []) =>
-  allocations.reduce(
-    (sum, allocation) =>
-      sum + Number(allocation?.advanceOutstanding || 0),
-    0,
-  );
-
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -710,18 +703,6 @@ const Users = () => {
                       </p>
                     </div>
 
-                    <div className="border border-red-500/30 bg-red-950/20 p-3">
-                      <p className="text-[10px] uppercase font-bold text-red-300">
-                        Outstanding Balance
-                      </p>
-                      <p className="mt-1 text-sm font-mono font-bold text-red-400">
-                        {formatCurrency(
-                          selectedUser?.outstandingBalance ??
-                            getOutstandingBalance(selectedUser?.allocations),
-                        )}
-                      </p>
-                    </div>
-
                     <div className="border border-slate-800 bg-[#090A0F] p-3">
                       <p className="text-[10px] uppercase font-bold text-[#9CA3AF]">
                         Withdrawable Balance
@@ -763,7 +744,6 @@ const Users = () => {
                           <th className="px-4 py-3 text-right">
                             Available Balance
                           </th>
-                          <th className="px-4 py-3 text-right">Outstanding</th>
                           <th className="px-4 py-3 text-right">Reinvest</th>
                           <th className="px-4 py-3 text-right">Status</th>
                         </tr>
@@ -819,11 +799,6 @@ const Users = () => {
                               <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">
                                 {formatCurrency(
                                   getAvailableBalance(allocation),
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-right font-mono font-bold text-red-400">
-                                {formatCurrency(
-                                  allocation?.advanceOutstanding || 0,
                                 )}
                               </td>
                               <td className="px-4 py-3 text-right font-mono font-bold text-[#34D399]">

@@ -9,12 +9,15 @@ import {
   RefreshCw,
   Coins,
   X,
-  TriangleAlert,
 } from "lucide-react";
 import { Skeleton, Popover, Button, message } from "antd";
 import { fetchInvestmentById } from "../../api/investmentApi";
 import { requestWithdrawalApi } from "../../api/withdrawalApi"
 import { NIGERIAN_BANKS } from "../../utils/bank";
+import {
+  formatCurrencyInput,
+  sanitizeCurrencyInput,
+} from "../../utils/currencyInput";
 
 
 
@@ -120,6 +123,27 @@ const handleSubmitWithdrawal = async () => {
     return message.error("Allocation ID not found.");
   }
 
+  const requestedAmount = Number(formData.amount);
+  const currentAvailableBalance = Number(
+    details.myInvestment?.availableBalance || 0,
+  );
+
+  if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
+    return message.error("Enter a valid withdrawal amount.");
+  }
+
+  if (currentAvailableBalance <= 0) {
+    return message.error(
+      "You do not have an available withdrawal balance for this investment.",
+    );
+  }
+
+  if (requestedAmount > currentAvailableBalance) {
+    return message.error(
+      `You can request a maximum of ${formatCurrency(currentAvailableBalance)}.`,
+    );
+  }
+
   setIsSubmitting(true);
   try {
     // 2. Destructure properties directly out of formData state object
@@ -156,8 +180,6 @@ const handleSubmitWithdrawal = async () => {
 
   // Maps properties seamlessly into dynamic card blocks (now containing 6 cards)
  const availableBalance = details.myInvestment?.availableBalance || 0;
- const outstandingBalance =
-   Number(details.myInvestment?.advanceOutstanding || 0);
 
   const metrics = [
     {
@@ -187,16 +209,6 @@ const handleSubmitWithdrawal = async () => {
       customBg: availableBalance === 0 
         ? "bg-rose-950/40 border-rose-500/30" 
         : "bg-emerald-950/20 border-emerald-500/20",
-    },
-    {
-      label: "Outstanding Balance",
-      val: outstandingBalance,
-      icon: TriangleAlert,
-      color: "text-red-400",
-      customBg:
-        outstandingBalance > 0
-          ? "bg-red-950/30 border-red-500/40"
-          : "bg-[#1F2937] border-slate-800/80",
     },
     {
       label: "Withdrawable Limit",
@@ -273,13 +285,7 @@ const handleSubmitWithdrawal = async () => {
             } border p-5 rounded-xl shadow-md flex flex-col justify-between transition-colors duration-200`}
           >
             <div className="flex justify-between items-center mb-3">
-              <span
-                className={`text-[10px] uppercase font-bold tracking-wider ${
-                  item.label === "Outstanding Balance"
-                    ? "text-red-400"
-                    : "text-[#9CA3AF]"
-                }`}
-              >
+              <span className="text-[10px] uppercase font-bold tracking-wider text-[#9CA3AF]">
                 {item.label}
               </span>
               <item.icon size={16} className={item.color} />
@@ -322,30 +328,32 @@ const handleSubmitWithdrawal = async () => {
                   Withdrawal Amount
                 </label>
                 <input
-                  type="number"
-                  placeholder="0.00"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="1,000,000"
                   required
-                  value={formData.amount}
-                  min="1"
+                  value={formatCurrencyInput(formData.amount)}
                   disabled={isSubmitting}
                   className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white rounded-lg focus:outline-none focus:border-[#34D399] font-mono"
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      amount: parseFloat(e.target.value) || "",
+                      amount: sanitizeCurrencyInput(e.target.value),
                     })
                   }
                 />
                 {!loading &&
                   Number(formData.amount) > availableBalance && (
-                    <p className="text-amber-400 text-[10px] mt-1.5 font-medium">
-                      If approved,{" "}
-                      {formatCurrency(
-                        Number(formData.amount) - availableBalance,
-                      )}{" "}
-                      will be added to your outstanding balance.
+                    <p className="text-red-400 text-[10px] mt-1.5 font-medium">
+                      You can request a maximum of{" "}
+                      {formatCurrency(availableBalance)}.
                     </p>
                   )}
+                {!loading && availableBalance <= 0 && (
+                  <p className="text-red-400 text-[10px] mt-1.5 font-medium">
+                    The admin has not made any money available for withdrawal.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -448,7 +456,9 @@ const handleSubmitWithdrawal = async () => {
                     disabled={
                       isSubmitting ||
                       !formData.amount ||
-                      !formData.accountNumber
+                      !formData.accountNumber ||
+                      availableBalance <= 0 ||
+                      Number(formData.amount) > availableBalance
                     }
                     className="w-full py-3 font-bold bg-[#34D399] text-[#090A0F] hover:bg-[#28b485] transition-all rounded-lg disabled:opacity-30 disabled:hover:bg-[#34D399] cursor-pointer disabled:cursor-not-allowed"
                   >

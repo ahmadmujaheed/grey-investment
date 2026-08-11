@@ -168,6 +168,9 @@ const Requests = () => {
             <th className="p-4 uppercase tracking-wider font-semibold text-[10px]">
               Investment
             </th>
+            <th className="p-4 uppercase tracking-wider font-semibold text-[10px]">
+              Investor
+            </th>
             <th className="p-4 text-right uppercase tracking-wider font-semibold text-[10px]">
               Requested
             </th>
@@ -190,7 +193,7 @@ const Requests = () => {
           {data.length === 0 ? (
             <tr>
               <td
-                colSpan={6}
+                colSpan={7}
                 className="p-10 text-center text-[#9CA3AF] italic"
               >
                 No withdrawal requests found.
@@ -211,6 +214,12 @@ const Requests = () => {
                     </p>
                     <p className="mt-0.5 text-[10px] text-[#9CA3AF]">
                       {request.investment?.reference || "No reference"}
+                    </p>
+                  </td>
+
+                  <td className="p-4">
+                    <p className="font-semibold capitalize text-white whitespace-nowrap">
+                      {request.user?.name || "Unknown user"}
                     </p>
                   </td>
 
@@ -431,22 +440,6 @@ const Requests = () => {
                         </p>
                       </div>
                       <div>
-                        <p className="text-[#9CA3AF]">
-                          Advance if Approved
-                        </p>
-                        <p className="text-lg font-bold text-red-400 font-mono mt-0.5">
-                          {formatCurrency(
-                            Math.max(
-                              0,
-                              Number(selectedRequest.amount || 0) -
-                                getAvailableBalance(
-                                  selectedRequest.allocation,
-                                ),
-                            ),
-                          )}
-                        </p>
-                      </div>
-                      <div>
                         <p className="text-[#9CA3AF]">Bank/Account Name</p>
                         <p className="text-white font-medium mt-0.5">
                           {selectedRequest.bankName} — {selectedRequest.accountName}
@@ -481,23 +474,10 @@ const Requests = () => {
                         <Popconfirm
                           title="Approve withdrawal request?"
                           description={
-                            Math.max(
-                              0,
-                              Number(selectedRequest.amount || 0) -
-                                getAvailableBalance(
-                                  selectedRequest.allocation,
-                                ),
-                            ) > 0
-                              ? `${formatCurrency(
-                                  Math.max(
-                                    0,
-                                    Number(selectedRequest.amount || 0) -
-                                      getAvailableBalance(
-                                        selectedRequest.allocation,
-                                      ),
-                                  ),
-                                )} will become an outstanding balance.`
-                              : "The full amount is covered by the available balance."
+                            Number(selectedRequest.amount || 0) >
+                            getAvailableBalance(selectedRequest.allocation)
+                              ? "This request exceeds the available balance and cannot be approved."
+                              : "The amount will be deducted from the user's available balance."
                           }
                           onConfirm={() => handleAction(selectedRequest._id, "approve")}
                           okText="Approve"
@@ -505,7 +485,13 @@ const Requests = () => {
                           okButtonProps={{ className: "bg-emerald-600" }}
                         >
                           <button
-                            disabled={actionLoadingId === selectedRequest._id}
+                            disabled={
+                              actionLoadingId === selectedRequest._id ||
+                              Number(selectedRequest.amount || 0) >
+                                getAvailableBalance(
+                                  selectedRequest.allocation,
+                                )
+                            }
                             className="px-4 py-2 bg-[#34D399] hover:bg-emerald-400 text-black text-xs font-bold uppercase disabled:opacity-50 cursor-pointer"
                           >
                             Approve Request

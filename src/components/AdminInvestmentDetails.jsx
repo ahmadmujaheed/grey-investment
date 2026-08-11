@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "motion/react";
-import { message, Modal, Popconfirm, Select, Tag } from "antd";
-import { ArrowLeft, Coins, Pencil, UserMinus, UserPlus } from "lucide-react";
+import { message, Modal, Popconfirm, Popover, Select, Tag } from "antd";
+import {
+  ArrowLeft,
+  Coins,
+  Pencil,
+  RotateCcw,
+  UserMinus,
+  UserPlus,
+} from "lucide-react";
 import { HiOutlineArchiveBoxArrowDown } from "react-icons/hi2";
 import { FaRegEdit } from "react-icons/fa";
 
@@ -16,8 +23,13 @@ import {
   archiveInvestmentPackage,
   editInvestment,
   updateInvestorAmount,
+  resetCompletedInvestment,
 } from "../api/investmentApi";
 import { Link } from "react-router-dom";
+import {
+  formatCurrencyInput,
+  sanitizeCurrencyInput,
+} from "../utils/currencyInput";
 
 const AdminInvestmentDetails = () => {
   const { id } = useParams();
@@ -56,6 +68,9 @@ const AdminInvestmentDetails = () => {
   const [editingAllocation, setEditingAllocation] = useState(null);
   const [editedPrincipal, setEditedPrincipal] = useState("");
   const [principalSaving, setPrincipalSaving] = useState(false);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPopoverOpen, setResetPopoverOpen] = useState(false);
+  const [resettingInvestment, setResettingInvestment] = useState(false);
 
   const totalEligibleForWithdrawal = Number(
     addWithdrawable?.totalInvestment ?? addWithdrawable?.totalValue ?? 0,
@@ -535,6 +550,34 @@ const AdminInvestmentDetails = () => {
     }
   };
 
+  const resetInvestment = async () => {
+    if (!resetPassword) {
+      message.warning("Enter your administrator password.");
+      return;
+    }
+
+    try {
+      setResettingInvestment(true);
+      const result = await resetCompletedInvestment(id, resetPassword);
+      message.success(
+        result?.message || "Completed investment reset successfully.",
+      );
+      setResetPassword("");
+      setResetPopoverOpen(false);
+      setInputProfitAmount("");
+      setCompanyPercent("");
+      setInvestorPercent("");
+      await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message ||
+          "Failed to reset completed investment.",
+      );
+    } finally {
+      setResettingInvestment(false);
+    }
+  };
+
   const openPrincipalEditor = (investor) => {
     setEditingAllocation(investor);
     setEditedPrincipal(String(investor.principal || ""));
@@ -591,6 +634,74 @@ const AdminInvestmentDetails = () => {
         </Link>
 
         <div className="flex items-center gap-3">
+          {investmentDetails?.investment?.status === "completed" && (
+              <Popover
+                open={resetPopoverOpen}
+                onOpenChange={(open) => {
+                  if (!resettingInvestment) setResetPopoverOpen(open);
+                  if (!open && !resettingInvestment) setResetPassword("");
+                }}
+                trigger="click"
+                placement="bottomRight"
+                content={
+                  <div className="w-72 space-y-3 p-1">
+                    <div>
+                      <p className="font-semibold text-slate-900">
+                        Reset completed investment?
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Profit will be reversed, but investors and principal
+                        will remain. Financially used profit cannot be reset.
+                      </p>
+                    </div>
+                    <input
+                      type="password"
+                      value={resetPassword}
+                      onChange={(event) =>
+                        setResetPassword(event.target.value)
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") resetInvestment();
+                      }}
+                      disabled={resettingInvestment}
+                      placeholder="Administrator password"
+                      autoComplete="current-password"
+                      className="w-full border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-red-500"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        disabled={resettingInvestment}
+                        onClick={() => {
+                          setResetPopoverOpen(false);
+                          setResetPassword("");
+                        }}
+                        className="px-3 py-1.5 text-xs font-semibold text-slate-600"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={resettingInvestment || !resetPassword}
+                        onClick={resetInvestment}
+                        className="bg-red-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                      >
+                        {resettingInvestment ? "Resetting..." : "Confirm Reset"}
+                      </button>
+                    </div>
+                  </div>
+                }
+              >
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 border border-red-700/50 bg-red-950/30 px-3 py-2 text-xs font-bold uppercase tracking-wider text-red-300 hover:text-red-200"
+                >
+                  <RotateCcw size={13} />
+                  Reset Investment
+                </button>
+              </Popover>
+            )}
+
           <Popconfirm
             title="Archive Investment Package"
             description="Are you sure you want to archive this investment package?"
@@ -720,12 +831,6 @@ const AdminInvestmentDetails = () => {
                   </div>
                   <div className="col-span-2 text-right text-xs font-mono font-bold text-blue-400">
                     {formatCurrency(investor.withdrawableLimit || 0)}
-                    {Number(investor.advanceOutstanding || 0) > 0 && (
-                      <p className="mt-1 text-[10px] text-red-400">
-                        Outstanding:{" "}
-                        {formatCurrency(investor.advanceOutstanding)}
-                      </p>
-                    )}
                   </div>
 
                   <div className="col-span-2 text-right">
@@ -751,6 +856,7 @@ const AdminInvestmentDetails = () => {
                           <Pencil size={12} /> Edit Amount
                         </button>
                     )}
+                    {investmentDetails?.investment?.status === "pending" && (
                     <Popconfirm
                       title="Remove investor?"
                       description={
@@ -767,6 +873,7 @@ const AdminInvestmentDetails = () => {
                         <UserMinus size={12} /> Remove
                       </button>
                     </Popconfirm>
+                    )}
                     </div>
                   </div>
                 </div>
@@ -1176,12 +1283,15 @@ const AdminInvestmentDetails = () => {
             </p> */}
 
             <input
-              type="number"
-              min="1"
-              max={remainingLimitCapacity}
-              value={withdrawableLimit}
+              type="text"
+              inputMode="decimal"
+              value={formatCurrencyInput(withdrawableLimit)}
               placeholder={`Maximum ${formatCurrency(remainingLimitCapacity)}`}
-              onChange={(event) => setWithdrawableLimit(event.target.value)}
+              onChange={(event) =>
+                setWithdrawableLimit(
+                  sanitizeCurrencyInput(event.target.value),
+                )
+              }
               className="w-full mt-3 px-3 py-2 bg-[#090A0F] border border-slate-700 text-white focus:outline-none focus:border-[#34D399]"
             />
 
@@ -1200,38 +1310,6 @@ const AdminInvestmentDetails = () => {
               </p>
             </div>
 
-            {Number(addWithdrawable?.advanceOutstanding || 0) > 0 && (
-              <div className="mt-3 border border-red-500/30 bg-red-950/20 p-3 text-xs">
-                <p className="text-red-300">
-                  Outstanding balance:{" "}
-                  <span className="font-bold text-red-400">
-                    {formatCurrency(addWithdrawable.advanceOutstanding)}
-                  </span>
-                </p>
-                <p className="mt-1 text-[#9CA3AF]">
-                  This addition repays{" "}
-                  <span className="font-bold text-red-300">
-                    {formatCurrency(
-                      Math.min(
-                        Number(withdrawableLimit || 0),
-                        Number(addWithdrawable.advanceOutstanding || 0),
-                      ),
-                    )}
-                  </span>
-                  . The user receives{" "}
-                  <span className="font-bold text-[#34D399]">
-                    {formatCurrency(
-                      Math.max(
-                        0,
-                        Number(withdrawableLimit || 0) -
-                          Number(addWithdrawable.advanceOutstanding || 0),
-                      ),
-                    )}
-                  </span>{" "}
-                  as available balance.
-                </p>
-              </div>
-            )}
 
             <div className="flex justify-end gap-2 mt-5">
               <button
