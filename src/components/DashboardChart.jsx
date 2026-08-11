@@ -4,8 +4,8 @@ import { fetchDashboardAnalyticsChart } from "../api/analyticsApi";
 
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   CartesianGrid,
   Tooltip,
   XAxis,
@@ -91,7 +91,7 @@ const DashboardChart = () => {
 
       <div className="h-[350px]">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
+          <LineChart
             data={chartData}
             margin={{
               top: 10,
@@ -100,22 +100,6 @@ const DashboardChart = () => {
               bottom: 0,
             }}
           >
-            <defs>
-              <linearGradient id="capital" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="#10B981"
-                  stopOpacity={0.5}
-                />
-
-                <stop
-                  offset="95%"
-                  stopColor="#10B981"
-                  stopOpacity={0}
-                />
-              </linearGradient>
-            </defs>
-
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="#334155"
@@ -150,14 +134,15 @@ const DashboardChart = () => {
               }}
             />
 
-            <Area
+            <Line
               type="monotone"
               dataKey="amount"
               stroke="#10B981"
-              strokeWidth={3}
-              fill="url(#capital)"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4, fill: "#10B981", strokeWidth: 0 }}
             />
-          </AreaChart>
+          </LineChart>
         </ResponsiveContainer>
       </div>
     </div>
