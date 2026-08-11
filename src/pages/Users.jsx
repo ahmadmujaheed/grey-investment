@@ -62,6 +62,9 @@ const getAvailableBalance = (allocation) =>
       0,
   );
 
+const excludeAdminAccounts = (users = []) =>
+  users.filter((user) => user?.role !== "admin");
+
 const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +96,7 @@ const Users = () => {
       const data = await fetchAllUsers();
 
       // Your response is: { success, count, users }
-      setUsers(data?.users || []);
+      setUsers(excludeAdminAccounts(data?.users));
     } catch (error) {
       console.error(error);
       message.error("Failed to load user data.");
@@ -104,7 +107,7 @@ const Users = () => {
 
   useEffect(() => {
     fetchAllUsers()
-      .then((data) => setUsers(data?.users || []))
+      .then((data) => setUsers(excludeAdminAccounts(data?.users)))
       .catch(() => message.error("Failed to load user data."))
       .finally(() => setLoading(false));
   }, []);

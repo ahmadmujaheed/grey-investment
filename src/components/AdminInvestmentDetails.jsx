@@ -169,7 +169,9 @@ const AdminInvestmentDetails = () => {
     try {
       setUsersLoading(true);
       const data = await fetchAllUsers();
-      setUsers(data?.users || []);
+      setUsers(
+        (data?.users || []).filter((user) => user?.role !== "admin"),
+      );
     } catch (error) {
       console.error("Failed to fetch users:", error);
       message.error("Unable to load platform users.");
