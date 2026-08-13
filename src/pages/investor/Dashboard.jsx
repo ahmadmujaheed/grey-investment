@@ -188,7 +188,7 @@ const Dashboard = () => {
       </div>
 
       {/* 📃 Full Investment Allocation View */}
-      <div className="bg-[#1F2937] border border-slate-800/60 overflow-hidden shadow-lg rounded-xl">
+      <div className="hidden">
         <div className="p-6 border-b border-slate-800 bg-gradient-to-r from-[#1F2937] to-[#192231]">
           <h3 className="text-sm font-bold text-white tracking-wide">
             Your Capital Allocations
@@ -371,6 +371,11 @@ const Dashboard = () => {
                           "text-amber-400 bg-amber-500/10 border-amber-500/20";
                         iconColor = "text-amber-400 bg-amber-950/20";
                         actionTypeLabel = "Reinvestment";
+                      } else if (desc.includes("maintenance fee")) {
+                        badgeColor =
+                          "text-amber-400 bg-amber-500/10 border-amber-500/20";
+                        iconColor = "text-amber-400 bg-amber-950/20";
+                        actionTypeLabel = "System Maintenance Fee";
                       }
 
                       return (

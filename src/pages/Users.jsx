@@ -20,7 +20,9 @@ import {
   resetUserPassword,
   updateUser,
   deleteUser,
+  chargeUserMaintenanceFee,
 } from "../api/userApi";
+import { formatCurrencyInput, sanitizeCurrencyInput } from "../utils/currencyInput";
 
 const formatCurrency = (amount = 0) =>
   new Intl.NumberFormat("en-NG", {
@@ -88,6 +90,23 @@ const Users = () => {
   const [resetPassword, setResetPassword] = useState("");
   const [resetPopoverOpen, setResetPopoverOpen] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [feeForm, setFeeForm] = useState({ amount: "", password: "" });
+  const [feePopoverOpen, setFeePopoverOpen] = useState(false);
+
+  const handleUserMaintenanceFee = async () => {
+    try {
+      setIsSubmitting(true);
+      const userId = selectedUser?._id || selectedUser?.id;
+      const result = await chargeUserMaintenanceFee(userId, feeForm);
+      message.success(result.message);
+      setFeeForm({ amount: "", password: "" });
+      setFeePopoverOpen(false);
+      await openUserDetailsModal(selectedUser);
+      await loadUsersData();
+    } catch (error) {
+      message.error(error.response?.data?.message || "Unable to charge maintenance fee.");
+    } finally { setIsSubmitting(false); }
+  };
 
   const loadUsersData = async () => {
     try {
@@ -575,6 +594,9 @@ const Users = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      <Popover trigger="click" open={feePopoverOpen} onOpenChange={setFeePopoverOpen} content={<div className="w-64 space-y-3"><p className="text-xs font-bold">Charge maintenance fee</p><input className="w-full border px-2 py-1.5" placeholder="Amount" inputMode="numeric" value={formatCurrencyInput(feeForm.amount)} onChange={(e) => setFeeForm({ ...feeForm, amount: sanitizeCurrencyInput(e.target.value) })} /><input className="w-full border px-2 py-1.5" type="password" placeholder="Admin password" value={feeForm.password} onChange={(e) => setFeeForm({ ...feeForm, password: e.target.value })} /><button disabled={isSubmitting || !feeForm.amount || !feeForm.password} onClick={handleUserMaintenanceFee} className="w-full py-1.5 bg-amber-500 text-slate-950 font-bold disabled:opacity-50">Confirm Charge</button></div>}>
+                        <button className="px-3 py-1.5 border border-amber-500/40 bg-amber-950/20 text-[10px] font-bold uppercase text-amber-400">Maintenance Fee</button>
+                      </Popover>
                       <Tag
                         color={
                           selectedUser?.role === "admin" ? "blue" : "green"

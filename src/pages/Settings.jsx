@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { message } from "antd";
+import { chargeAllMaintenanceFee } from "../api/userApi";
+import { formatCurrencyInput, sanitizeCurrencyInput } from "../utils/currencyInput";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 15 },
@@ -38,6 +40,20 @@ const Settings = () => {
   });
 
   const [showPass, setShowPass] = useState({ current: false, new: false, confirm: false });
+  const [feeForm, setFeeForm] = useState({ amount: "", password: "" });
+  const [chargingFee, setChargingFee] = useState(false);
+
+  const handleBulkFee = async (e) => {
+    e.preventDefault();
+    try {
+      setChargingFee(true);
+      const result = await chargeAllMaintenanceFee(feeForm);
+      message.success(result.message);
+      setFeeForm({ amount: "", password: "" });
+    } catch (error) {
+      message.error(error.response?.data?.message || "Unable to charge maintenance fee.");
+    } finally { setChargingFee(false); }
+  };
 
   // --- Handlers ---
   const handleProfileSave = (e) => {
@@ -80,6 +96,18 @@ const Settings = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="border border-amber-500/30 bg-[#1F2937] p-6 rounded-none space-y-4 lg:col-span-2">
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <SettingsIcon size={18} className="text-amber-400" />
+            <h3 className="font-bold text-white uppercase tracking-wider text-xs">Charge All Active Investors Maintenance Fee</h3>
+          </div>
+          <p className="text-xs text-slate-400">The same amount will be deducted from each active investor's available profit. Investors with insufficient profit will be skipped.</p>
+          <form onSubmit={handleBulkFee} className="grid md:grid-cols-3 gap-4 text-xs items-end">
+            <div className="space-y-1.5"><label className="font-bold block">Amount (₦)</label><input type="text" inputMode="numeric" required value={formatCurrencyInput(feeForm.amount)} onChange={(e) => setFeeForm({ ...feeForm, amount: sanitizeCurrencyInput(e.target.value) })} className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white" placeholder="10,000" /></div>
+            <div className="space-y-1.5"><label className="font-bold block">Administrator Password</label><input type="password" required value={feeForm.password} onChange={(e) => setFeeForm({ ...feeForm, password: e.target.value })} className="w-full px-3 py-2.5 bg-[#090A0F] border border-slate-800 text-white" /></div>
+            <button disabled={chargingFee} className="py-2.5 bg-amber-500 text-slate-950 font-bold disabled:opacity-50">{chargingFee ? "Charging..." : "Charge Maintenance Fee"}</button>
+          </form>
+        </motion.div>
         
         {/* CARD 1: EDIT INFORMATION */}
         <motion.div 

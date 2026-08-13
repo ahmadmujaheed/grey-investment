@@ -9,6 +9,9 @@ import {
   RefreshCw,
   Coins,
   X,
+  History,
+  ArrowDownToLine,
+  Repeat2,
 } from "lucide-react";
 import { Skeleton, Popover, Button, message } from "antd";
 import { fetchInvestmentById } from "../../api/investmentApi";
@@ -44,6 +47,7 @@ const InvestmentDetails = () => {
   const [details, setDetails] = useState({
     investment: null,
     myInvestment: null,
+    history: [],
   });
 
   const [formData, setFormData] = useState({
@@ -62,9 +66,36 @@ const InvestmentDetails = () => {
       setInvestmentDetails(response?.myInvestment?.allocationId)
       // console.log(response)
       if (response?.success || response?.investment) {
+        const returnedHistory = Array.isArray(response.history)
+          ? response.history
+          : [];
+        const hasLimitHistory = returnedHistory.some(
+          (event) => event.type === "withdrawable_limit",
+        );
+        const currentLimit = Number(
+          response?.myInvestment?.withdrawableLimit || 0,
+        );
+        const history =
+          !hasLimitHistory && currentLimit > 0
+            ? [
+                ...returnedHistory,
+                {
+                  id: `current-limit-${response.myInvestment.allocationId}`,
+                  type: "withdrawable_limit",
+                  amount: currentLimit,
+                  status: "completed",
+                  description: "Current withdrawable limit set by the admin.",
+                  createdAt:
+                    response.myInvestment.allocatedAt || new Date().toISOString(),
+                  isCurrentSnapshot: true,
+                },
+              ]
+            : returnedHistory;
+
         setDetails({
           investment: response.investment || null,
           myInvestment: response.myInvestment || null,
+          history,
         });
       } else {
         setError("Invalid response payload structure returned.");
@@ -299,6 +330,94 @@ const handleSubmitWithdrawal = async () => {
             )}
           </div>
         ))}
+      </div>
+
+      <div className="bg-[#1F2937] border border-slate-800/60 rounded-xl p-6 shadow-xl">
+        <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+            <History size={18} />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white uppercase tracking-wide">
+              Investment History
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Withdrawals, limits and reinvestments for this investment.
+            </p>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="pt-5"><Skeleton active paragraph={{ rows: 4 }} /></div>
+        ) : details.history.length === 0 ? (
+          <p className="py-8 text-center text-xs text-slate-500">
+            No investment activity has been recorded yet.
+          </p>
+        ) : (
+          <div className="divide-y divide-slate-800/60">
+            {details.history.map((event) => {
+              const isWithdrawal = event.type === "withdrawal";
+              const isReinvestment = event.type === "reinvestment";
+              const isMaintenanceFee = event.type === "maintenance_fee";
+              const EventIcon = isWithdrawal
+                ? ArrowDownToLine
+                : isReinvestment
+                  ? Repeat2
+                  : Landmark;
+              const title = isWithdrawal
+                ? "Withdrawal request"
+                : isReinvestment
+                  ? "Money reinvested"
+                  : isMaintenanceFee
+                    ? "System maintenance fee"
+                    : "Withdrawable limit added";
+
+              return (
+                <div key={`${event.type}-${event.id}`} className="flex gap-4 py-4">
+                  <div className="mt-0.5 p-2 h-fit rounded-lg bg-slate-900/70 text-emerald-400">
+                    <EventIcon size={16} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-bold text-white">{title}</p>
+                      <span className="font-mono text-sm font-bold text-white">
+                        {formatCurrency(event.amount)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      {event.description}
+                    </p>
+                    {event.destinationInvestment && (
+                      <p className="text-[11px] text-amber-300 mt-1">
+                        Destination: {event.destinationInvestment.title}
+                        {event.destinationInvestment.reference
+                          ? ` (${event.destinationInvestment.reference})`
+                          : ""}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-slate-500">
+                      <span>
+                        {event.isCurrentSnapshot
+                          ? "Current recorded limit"
+                          : new Date(event.createdAt).toLocaleString()}
+                      </span>
+                      <span className={`uppercase font-bold ${
+                        event.status === "rejected"
+                          ? "text-rose-400"
+                          : event.status === "pending"
+                            ? "text-amber-400"
+                            : "text-emerald-400"
+                      }`}>
+                        {event.status}
+                      </span>
+                      {event.bankName && <span>{event.bankName}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Withdrawal Modal Structure */}

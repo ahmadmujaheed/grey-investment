@@ -57,3 +57,13 @@ export const deleteUser = async (userId, password) => {
   });
   return response.data;
 };
+
+export const chargeUserMaintenanceFee = async (userId, payload) => {
+  const response = await apiClient.post(`/users/${userId}/maintenance-fee`, payload);
+  return response.data;
+};
+
+export const chargeAllMaintenanceFee = async (payload) => {
+  const response = await apiClient.post("/users/maintenance-fee/all", payload);
+  return response.data;
+};
