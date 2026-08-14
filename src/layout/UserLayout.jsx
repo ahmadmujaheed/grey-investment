@@ -14,6 +14,7 @@ import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 
 // 🔌 Hook into your Zustand Auth Store
 import { useAuthStore } from "../store/useAuthStore";
+import apiClient from "../api/apiClient";
 
 const UserLayout = () => {
   const location = useLocation();
@@ -22,6 +23,8 @@ const UserLayout = () => {
   // Extract state and logout mechanisms from store
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const isImpersonating = useAuthStore((state) => state.isImpersonating);
+  const stopImpersonation = useAuthStore((state) => state.stopImpersonation);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -40,6 +43,18 @@ const UserLayout = () => {
   const handleLogoutAction = () => {
     logout();
     navigate("/", { replace: true });
+  };
+
+  const handleReturnToAdmin = async () => {
+    try {
+      await apiClient.post("/auth/impersonation/stop");
+    } catch (error) {
+      console.error("Could not record impersonation stop:", error);
+    } finally {
+      const auth = useAuthStore.getState();
+      const restored = auth.isImpersonating ? stopImpersonation() : auth.user?.role === "superadmin";
+      navigate(restored ? "/superadmin/users" : "/", { replace: true });
+    }
   };
 
   // Automatically collapse sidebar on medium screens, and handle mobile breakpoint
@@ -87,8 +102,14 @@ const UserLayout = () => {
 
   return (
     <div className="min-h-screen bg-[#1F1F1F] font-sans antialiased text-[#9CA3AF]">
+      {isImpersonating && (
+        <div className="fixed top-0 left-0 right-0 z-[60] min-h-10 bg-amber-400 text-slate-950 px-4 py-2 flex items-center justify-center gap-4 text-sm font-bold">
+          <span>You are impersonating {user?.name || user?.email}. This session is read-only.</span>
+          <button type="button" onClick={handleReturnToAdmin} className="bg-slate-950 text-white px-3 py-1 text-xs uppercase tracking-wide">Return to Admin</button>
+        </div>
+      )}
       {/* 1. FIXED HEADER */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-[#1F2937] border-b border-slate-800 z-40 flex items-center justify-between px-6 shadow-sm shadow-[#090A0F]">
+      <header className={`fixed ${isImpersonating ? "top-10" : "top-0"} left-0 right-0 h-16 bg-[#1F2937] border-b border-slate-800 z-40 flex items-center justify-between px-6 shadow-sm shadow-[#090A0F]`}>
         <div className="flex items-center gap-4">
           {/* Mobile Hamburger Toggle */}
           <button
@@ -147,7 +168,7 @@ const UserLayout = () => {
       <motion.aside
         animate={{ width: isCollapsed ? "5rem" : "16rem" }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="hidden lg:flex flex-col fixed top-16 bottom-0 left-0 bg-[#1F2937] border-r border-slate-800 z-30 overflow-x-hidden justify-between py-6"
+        className={`hidden lg:flex flex-col fixed ${isImpersonating ? "top-[6.5rem]" : "top-16"} bottom-0 left-0 bg-[#1F2937] border-r border-slate-800 z-30 overflow-x-hidden justify-between py-6 transition-[top] duration-300`}
       >
         {/* Navigation items */}
         <div className="px-4 space-y-1.5">
@@ -229,7 +250,7 @@ const UserLayout = () => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-              className="lg:hidden fixed top-0 bottom-0 left-0 w-64 bg-[#1F2937] border-r border-slate-800 z-50 p-6 flex flex-col justify-between shadow-2xl"
+              className={`lg:hidden fixed ${isImpersonating ? "top-10" : "top-0"} bottom-0 left-0 w-64 bg-[#1F2937] border-r border-slate-800 z-50 p-6 flex flex-col justify-between shadow-2xl`}
             >
               <div className="space-y-8">
                 {/* Mobile Header Brand */}
@@ -302,7 +323,7 @@ const UserLayout = () => {
                 : "17.5rem",
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="pt-21 pr-6 pb-12 min-h-screen transition-[padding] duration-300"
+        className={`${isImpersonating ? "pt-[7.75rem]" : "pt-21"} pr-6 pb-12 min-h-screen transition-[padding] duration-300`}
       >
         {/* Render child investor pages here inside App.jsx routing configuration */}
         <Outlet />

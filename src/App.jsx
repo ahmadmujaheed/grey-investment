@@ -5,6 +5,8 @@ import Login from "./pages/Login";
 // Layouts
 import DashboardLayout from "./layout/DashboardLayout";
 import UserLayout from "./layout/UserLayout";
+import SuperAdminLayout from "./layout/SuperAdminLayout";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 
 // Admin Only Pages
 import Dashboard from "./pages/Dashboard";
@@ -46,6 +48,13 @@ const App = () => {
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Profile />} />
             <Route path="requests" element={<Request />} />
+          </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRole="superadmin" />}>
+          <Route path="/superadmin" element={<SuperAdminLayout />}>
+            <Route index element={<SuperAdminDashboard />} />
+            <Route path="users" element={<Users />} />
           </Route>
         </Route>
 

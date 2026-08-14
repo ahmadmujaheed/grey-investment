@@ -7,7 +7,6 @@ import { useNavigate } from "react-router-dom";
 // 🔌 Central API integration Layer & Auth Store configuration hooks
 import { loginUser } from "../api/authApi";
 import { useAuthStore } from "../store/useAuthStore";
-import investment from "../assets/investment.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -27,7 +26,9 @@ const Login = () => {
 
       message.success(`Welcome back, ${responseData.user.name || "User"}!`);
 
-      if (responseData.user?.role === "admin") {
+      if (responseData.user?.role === "superadmin") {
+        navigate("/superadmin", { replace: true });
+      } else if (responseData.user?.role === "admin") {
         navigate("/dashboard");
       } else {
         navigate("/user-dashboard");

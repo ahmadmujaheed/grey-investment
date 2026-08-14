@@ -67,3 +67,8 @@ export const chargeAllMaintenanceFee = async (payload) => {
   const response = await apiClient.post("/users/maintenance-fee/all", payload);
   return response.data;
 };
+
+export const impersonateUser = async (userId, password) => {
+  const response = await apiClient.post("/auth/impersonate", { userId, password });
+  return response.data;
+};

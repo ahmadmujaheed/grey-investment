@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   Eye,
   Mail,
   Phone,
@@ -8,6 +10,7 @@ import {
   ShieldCheck,
   TrendingUp,
   UserPlus,
+  LogIn,
   Users as UsersIcon,
 } from "lucide-react";
 import { Input, message, Popover, Tag } from "antd";
@@ -21,7 +24,10 @@ import {
   updateUser,
   deleteUser,
   chargeUserMaintenanceFee,
+  impersonateUser,
 } from "../api/userApi";
+import { useAuthStore } from "../store/useAuthStore";
+import { useNavigate } from "react-router-dom";
 import { formatCurrencyInput, sanitizeCurrencyInput } from "../utils/currencyInput";
 
 const formatCurrency = (amount = 0) =>
@@ -68,9 +74,14 @@ const excludeAdminAccounts = (users = []) =>
   users.filter((user) => user?.role !== "admin");
 
 const Users = () => {
+  const navigate = useNavigate();
+  const startImpersonation = useAuthStore((state) => state.startImpersonation);
+  const currentUser = useAuthStore((state) => state.user);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,6 +103,36 @@ const Users = () => {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [feeForm, setFeeForm] = useState({ amount: "", password: "" });
   const [feePopoverOpen, setFeePopoverOpen] = useState(false);
+  const [impersonationUserId, setImpersonationUserId] = useState(null);
+  const [impersonationPassword, setImpersonationPassword] = useState("");
+  const [impersonating, setImpersonating] = useState(false);
+
+  const handleImpersonate = async (user) => {
+    if (!impersonationPassword) {
+      message.error("Enter your administrator password.");
+      return;
+    }
+    try {
+      setImpersonating(true);
+      const result = await impersonateUser(user._id || user.id, impersonationPassword);
+      const impersonatedUser = { ...result.user, role: "user" };
+      const started = startImpersonation(result.accessToken, impersonatedUser);
+      if (!started) {
+        throw new Error("Unable to preserve the superadmin session.");
+      }
+      message.success(result.message);
+      navigate("/user-dashboard", { replace: true });
+    } catch (error) {
+      message.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to impersonate this user.",
+      );
+    } finally {
+      setImpersonating(false);
+      setImpersonationPassword("");
+    }
+  };
 
   const handleUserMaintenanceFee = async () => {
     try {
@@ -336,6 +377,13 @@ const Users = () => {
     );
   }, [users, searchTerm]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedUsers = useMemo(() => {
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredUsers.slice(start, start + pageSize);
+  }, [filteredUsers, safeCurrentPage]);
+
   const metrics = useMemo(() => {
     const totalCapital = users.reduce(
       (total, user) =>
@@ -371,7 +419,7 @@ const Users = () => {
           </p>
         </div>
 
-        <button
+        {currentUser?.role === "admin" && <button
           onClick={() => {
             setEditingUser(null);
 
@@ -386,7 +434,7 @@ const Users = () => {
         >
           <UserPlus size={16} />
           Register Investor
-        </button>
+        </button>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -439,7 +487,10 @@ const Users = () => {
           type="text"
           placeholder="Search by name, email or phone..."
           value={searchTerm}
-          onChange={(event) => setSearchTerm(event.target.value)}
+          onChange={(event) => {
+            setSearchTerm(event.target.value);
+            setCurrentPage(1);
+          }}
           className="w-full text-xs bg-transparent text-white focus:outline-none font-medium placeholder-[#9CA3AF]"
         />
       </div>
@@ -471,7 +522,7 @@ const Users = () => {
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((user) => {
+              paginatedUsers.map((user) => {
                 const totalInvested = (user.allocations || []).reduce(
                   (sum, allocation) => sum + Number(allocation.principal || 0),
                   0,
@@ -527,6 +578,18 @@ const Users = () => {
                     </td>
 
                     <td className="p-4 text-center">
+                      {currentUser?.role === "superadmin" && <Popover
+                        trigger="click"
+                        open={impersonationUserId === (user._id || user.id)}
+                        onOpenChange={(open) => {
+                          setImpersonationUserId(open ? (user._id || user.id) : null);
+                          if (!open) setImpersonationPassword("");
+                        }}
+                        title="Login as this investor?"
+                        content={<div className="w-72 space-y-3"><p className="text-xs text-slate-600">This creates a 15-minute, read-only session and records the action in the audit log.</p><Input.Password value={impersonationPassword} onChange={(event) => setImpersonationPassword(event.target.value)} placeholder="Administrator password" onPressEnter={() => handleImpersonate(user)} /><button type="button" disabled={impersonating || !impersonationPassword} onClick={() => handleImpersonate(user)} className="w-full px-3 py-2 text-xs bg-[#34D399] text-[#090A0F] font-bold disabled:opacity-50">{impersonating ? "Starting..." : "Login As"}</button></div>}
+                      >
+                        <button title="Login as investor" className="p-1.5 text-[#9CA3AF] hover:text-[#3B82F6] hover:bg-[#090A0F] transition-all inline-flex items-center justify-center cursor-pointer"><LogIn size={15} /></button>
+                      </Popover>}
                       <button
                         onClick={() => openUserDetailsModal(user)}
                         title="View investor details"
@@ -542,6 +605,19 @@ const Users = () => {
           </tbody>
         </table>
       </div>
+
+      {filteredUsers.length > 0 && (
+        <div className="flex flex-col gap-3 border border-slate-800 bg-[#1F2937] px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-[#9CA3AF]">
+            Showing {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, filteredUsers.length)} of {filteredUsers.length} users
+          </span>
+          <div className="flex items-center gap-2">
+            <button type="button" disabled={safeCurrentPage === 1} onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))} className="inline-flex items-center gap-1 border border-slate-700 px-3 py-2 font-bold text-white hover:border-[#34D399] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={14} />Previous</button>
+            <span className="min-w-20 text-center font-bold text-white">Page {safeCurrentPage} of {totalPages}</span>
+            <button type="button" disabled={safeCurrentPage === totalPages} onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))} className="inline-flex items-center gap-1 border border-slate-700 px-3 py-2 font-bold text-white hover:border-[#34D399] disabled:cursor-not-allowed disabled:opacity-40">Next<ChevronRight size={14} /></button>
+          </div>
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {isUserDetailsModalOpen && (
