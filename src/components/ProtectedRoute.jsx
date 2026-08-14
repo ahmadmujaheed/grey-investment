@@ -20,39 +20,19 @@ const ProtectedRoute = ({ allowedRole }) => {
     user: "/user-dashboard",
   };
 
-  if (import.meta.env.DEV) {
-    console.info("[ROUTE AUTH] Evaluating route", {
-      pathname: location.pathname,
-      allowedRole: requiredRole || null,
-      currentRole: currentRole || null,
-      hasUser: Boolean(user),
-      isImpersonating,
-      isInitialPassword: user?.isInitialPassword || false,
-    });
-  }
-
   // 1. If not logged in, boot to landing/login
   if (!user) {
-    if (import.meta.env.DEV) console.warn("[ROUTE AUTH] Rejected: no authenticated user");
     return <Navigate to="/" replace />;
   }
 
   // 🚨 New: Intercept mandatory password update onboarding
   // If they have a temporary password, block access and force them to user-settings
   if (!isImpersonating && user.isInitialPassword && location.pathname !== "/user-dashboard/user-settings") {
-    if (import.meta.env.DEV) console.warn("[ROUTE AUTH] Redirecting: initial password change required");
     return <Navigate to="/user-dashboard/user-settings" replace />;
   }
 
   // 2. Role Check Authorization Intercept
   if (requiredRole && currentRole !== requiredRole) {
-    if (import.meta.env.DEV) {
-      console.warn("[ROUTE AUTH] Rejected: role mismatch", {
-        required: requiredRole,
-        received: currentRole,
-        redirectingTo: roleHome[currentRole] || "/",
-      });
-    }
     return <Navigate to={roleHome[currentRole] || "/"} replace />;
   }
 

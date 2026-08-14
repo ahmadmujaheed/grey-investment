@@ -24,18 +24,6 @@ apiClient.interceptors.response.use(
   (error) => {
     const originalRequest = error.config;
 
-    if (import.meta.env.DEV) {
-      const authState = useAuthStore.getState();
-      console.error("[API] Request failed", {
-        method: originalRequest?.method?.toUpperCase(),
-        url: originalRequest?.url,
-        status: error.response?.status,
-        message: error.response?.data?.message || error.message,
-        currentRole: authState.user?.role || null,
-        isImpersonating: authState.isImpersonating,
-      });
-    }
-
     // 🛑 Avoid running automated logouts if the request was intentionally hitting the login route
     if (error.response && error.response.status === 401 && !originalRequest.url.includes("/auth/login")) {
       const auth = useAuthStore.getState();
