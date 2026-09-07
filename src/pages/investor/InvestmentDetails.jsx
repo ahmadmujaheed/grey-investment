@@ -12,7 +12,6 @@ import {
   History,
   ArrowDownToLine,
   Repeat2,
-  Banknote,
 } from "lucide-react";
 import { Skeleton, Popover, Button, message } from "antd";
 import { fetchInvestmentById } from "../../api/investmentApi";
@@ -227,10 +226,10 @@ const handleSubmitWithdrawal = async () => {
       color: "text-blue-400",
     },
     {
-      label: "Total Pool Value",
-      val: details.myInvestment?.totalInvestment || 0,
-      icon: Clock,
-      color: "text-indigo-400",
+      label: "Amount Reinvested",
+      val: details.myInvestment?.amountReinvested || 0,
+      icon: Coins,
+      color: "text-amber-400",
     },
     {
       label: "Liquid Available Balance",
@@ -243,24 +242,17 @@ const handleSubmitWithdrawal = async () => {
         : "bg-emerald-950/20 border-emerald-500/20",
     },
     {
-      label: "Amount Collected",
-      val:  0,
-      icon: Banknote,
-      color: "text-cyan-400",
-    },
-    {
       label: "Withdrawable Limit",
       val: details.myInvestment?.withdrawableLimit || 0,
       icon: Landmark,
       color: "text-white",
     },
     {
-      label: "Amount Reinvested",
-      val: details.myInvestment?.amountReinvested || 0,
-      icon: Coins,
-      color: "text-orange-400",
+      label: "Total Pool Value",
+      val: details.myInvestment?.totalInvestment || 0,
+      icon: Clock,
+      color: "text-indigo-400",
     },
-    
   ];
 
   if (error) {
