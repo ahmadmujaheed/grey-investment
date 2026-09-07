@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Investment from "./pages/Investment";
 import Users from "./pages/Users";
 import UserDetails from "./pages/UserDetails";
+import UserInvestmentStatement from "./pages/UserInvestmentStatement";
 import Settings from "./pages/Settings";
 import Request from "./pages/Request";
 
@@ -47,6 +48,7 @@ const App = () => {
             <Route path="investment/:id" element={<AdminInvestmentDetails />} />
             <Route path="users" element={<Users />} />
             <Route path="users/:id" element={<UserDetails />} />
+            <Route path="users/:userId/investment/:investmentId" element={<UserInvestmentStatement />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Profile />} />
             <Route path="requests" element={<Request />} />
@@ -58,6 +60,7 @@ const App = () => {
             <Route index element={<SuperAdminDashboard />} />
             <Route path="users" element={<Users />} />
             <Route path="users/:id" element={<UserDetails />} />
+            <Route path="users/:userId/investment/:investmentId" element={<UserInvestmentStatement />} />
           </Route>
         </Route>
 

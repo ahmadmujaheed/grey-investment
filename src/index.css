@@ -198,3 +198,385 @@ code {
     break-inside: avoid;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Investor statement PDF / print layout
+   -------------------------------------------------------------------------- */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 11mm 14mm;
+  }
+
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-size: 10px !important;
+  }
+
+  /* The dashboard shell must not reserve sidebar/header space in the PDF. */
+  header,
+  aside,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  main {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+  }
+
+  .user-details-page {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 8px !important;
+    color: #111827 !important;
+  }
+
+  .user-details-page > * {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .print-letterhead {
+    display: block !important;
+    margin-bottom: 7px !important;
+  }
+
+  .print-brand-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .print-brand {
+    font-size: 20px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: -0.7px;
+    color: #111827;
+  }
+
+  .print-brand span {
+    color: #059669;
+  }
+
+  .print-subbrand {
+    margin-top: 4px;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 1.6px;
+    color: #6b7280;
+  }
+
+  .print-statement-meta {
+    text-align: right;
+    font-size: 8px;
+    line-height: 1.45;
+    color: #6b7280;
+  }
+
+  .print-statement-meta strong {
+    color: #111827;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+  }
+
+  .print-rule {
+    height: 2px;
+    margin-top: 8px;
+    background: #111827;
+  }
+
+  .print-profile-card {
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 9px 0 !important;
+    border-bottom: 1px solid #d1d5db !important;
+  }
+
+  .print-avatar {
+    display: flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #9ca3af;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 800;
+    color: #111827;
+  }
+
+  .print-profile-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #111827;
+  }
+
+  .print-profile-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 2px;
+    font-size: 8px;
+    color: #6b7280;
+  }
+
+  .print-summary-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  .print-summary-grid > div {
+    min-width: 0 !important;
+    padding: 8px !important;
+    border: 1px solid #d1d5db !important;
+    background: #fff !important;
+  }
+
+  .print-summary-grid > div:nth-child(n + 4) {
+    margin-top: 0 !important;
+  }
+
+  .print-summary-grid p:first-child {
+    font-size: 7px !important;
+    letter-spacing: .4px;
+    color: #6b7280 !important;
+  }
+
+  .print-summary-grid p:last-child {
+    margin-top: 3px !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+    font-size: 11px !important;
+    color: #111827 !important;
+  }
+
+  .print-section {
+    width: 100% !important;
+    margin-top: 2px !important;
+    overflow: visible !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    border: 1px solid #d1d5db !important;
+    background: #fff !important;
+  }
+
+  .print-section > div:first-child {
+    padding: 7px 9px !important;
+    background: #f3f4f6 !important;
+    border-bottom: 1px solid #d1d5db !important;
+  }
+
+  .print-section h2 {
+    margin: 0 !important;
+    font-size: 9px !important;
+    letter-spacing: .8px !important;
+    color: #111827 !important;
+  }
+
+  .print-section p {
+    font-size: 7px !important;
+    color: #6b7280 !important;
+  }
+
+  .print-section table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    font-size: 8px !important;
+  }
+
+  .print-section th,
+  .print-section td {
+    padding: 5px 6px !important;
+    overflow-wrap: anywhere !important;
+    vertical-align: top !important;
+    color: #111827 !important;
+    border-color: #e5e7eb !important;
+  }
+
+  .print-section th {
+    background: #f9fafb !important;
+    font-size: 6.5px !important;
+    letter-spacing: .45px !important;
+    color: #4b5563 !important;
+  }
+
+  .statement-table th:nth-child(1),
+  .statement-table td:nth-child(1) { width: 16%; }
+  .statement-table th:nth-child(2),
+  .statement-table td:nth-child(2) { width: 40%; }
+  .statement-table th:nth-child(3),
+  .statement-table td:nth-child(3) { width: 18%; }
+  .statement-table th:nth-child(4),
+  .statement-table td:nth-child(4) { width: 14%; }
+  .statement-table th:nth-child(5),
+  .statement-table td:nth-child(5) { width: 12%; }
+
+  .allocation-table th:nth-child(1),
+  .allocation-table td:nth-child(1) { width: 24%; }
+  .allocation-table th:nth-child(n + 2),
+  .allocation-table td:nth-child(n + 2) { width: 10.85%; }
+
+  .withdrawal-table th:nth-child(1),
+  .withdrawal-table td:nth-child(1) { width: 20%; }
+  .withdrawal-table th:nth-child(2),
+  .withdrawal-table td:nth-child(2) { width: 17%; }
+  .withdrawal-table th:nth-child(3),
+  .withdrawal-table td:nth-child(3) { width: 43%; }
+  .withdrawal-table th:nth-child(4),
+  .withdrawal-table td:nth-child(4) { width: 20%; }
+
+  .print-section .inline-flex {
+    display: inline !important;
+  }
+
+  .print-section svg {
+    display: none !important;
+  }
+
+  .print-section [class*="font-mono"] {
+    font-size: 8px !important;
+  }
+
+  .print-section .ant-tag {
+    padding: 1px 4px !important;
+    border: 1px solid #9ca3af !important;
+    border-radius: 3px !important;
+    background: #fff !important;
+    font-size: 6px !important;
+    line-height: 1.2 !important;
+    color: #111827 !important;
+  }
+
+  .user-details-page > div:last-child {
+    padding-top: 6px !important;
+    margin-top: 1px !important;
+    border-color: #d1d5db !important;
+    font-size: 7px !important;
+    color: #6b7280 !important;
+  }
+
+  /* Keep headings with the first row of their tables. */
+  .print-section > div:first-child {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-section tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+@media print {
+  .investment-statement-page {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #111827 !important;
+  }
+
+  .investment-statement-page .no-print { display: none !important; }
+  .investment-statement-page .print-only { display: block !important; }
+  .investment-statement-page .statement-print-section {
+    border: 1px solid #d1d5db !important;
+    background: #fff !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .investment-statement-page .statement-print-section > div:first-child {
+    background: #f3f4f6 !important;
+    border-color: #d1d5db !important;
+  }
+
+  .investment-statement-page h2,
+  .investment-statement-page td,
+  .investment-statement-page th,
+  .investment-statement-page p,
+  .investment-statement-page span,
+  .investment-statement-page strong {
+    color: #111827 !important;
+  }
+
+  .investment-statement-page table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    font-size: 8px !important;
+  }
+
+  .investment-statement-page th,
+  .investment-statement-page td {
+    padding: 5px 6px !important;
+    border-color: #e5e7eb !important;
+    overflow-wrap: anywhere !important;
+    vertical-align: top !important;
+  }
+
+  .investment-statement-page th {
+    background: #f9fafb !important;
+    font-size: 6.5px !important;
+    letter-spacing: .4px !important;
+  }
+
+  .investment-history-table th:nth-child(1),
+  .investment-history-table td:nth-child(1) { width: 16%; }
+  .investment-history-table th:nth-child(2),
+  .investment-history-table td:nth-child(2) { width: 38%; }
+  .investment-history-table th:nth-child(3),
+  .investment-history-table td:nth-child(3) { width: 17%; }
+  .investment-history-table th:nth-child(4),
+  .investment-history-table td:nth-child(4) { width: 17%; }
+  .investment-history-table th:nth-child(5),
+  .investment-history-table td:nth-child(5) { width: 12%; }
+
+  .investment-statement-page .grid { break-inside: auto !important; }
+  .investment-statement-page .border-slate-800 { border-color: #d1d5db !important; }
+  .investment-statement-page .bg-\[\#1F2937\],
+  .investment-statement-page .bg-\[\#090A0F\],
+  .investment-statement-page .bg-\[\#111827\] { background: #fff !important; }
+  .investment-statement-page .text-slate-500 { color: #6b7280 !important; }
+  .investment-statement-page .text-white { color: #111827 !important; }
+  .investment-statement-page .text-emerald-400,
+  .investment-statement-page .text-rose-400,
+  .investment-statement-page .text-amber-400,
+  .investment-statement-page .text-violet-400,
+  .investment-statement-page .text-blue-400,
+  .investment-statement-page .text-\[\#34D399\] { color: #111827 !important; }
+
+  .investment-statement-page tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+  .investment-statement-page .ant-tag { background: #fff !important; border: 1px solid #9ca3af !important; color: #111827 !important; font-size: 6px !important; padding: 1px 4px !important; }
+  .investment-statement-page svg { display: none !important; }
+}

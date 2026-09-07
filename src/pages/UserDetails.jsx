@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowDownLeft,
@@ -54,6 +54,12 @@ const available = (allocation) =>
       allocation?.remainingWithdrawable ??
       allocation?.availableToWithdraw,
   );
+
+const investmentIdOf = (allocation) =>
+  allocation?.investmentId ||
+  allocation?.investment?._id ||
+  allocation?.investment?.id ||
+  "";
 
 const getWithdrawalUserId = (item) =>
   item?.user?._id ||
@@ -230,7 +236,21 @@ const UserDetails = () => {
   }
 
   return (
-    <div className="min-h-screen space-y-5 bg-[#1F1F1F] text-[#9CA3AF] print:bg-white print:text-black">
+    <div className="user-details-page min-h-screen space-y-5 bg-[#1F1F1F] text-[#9CA3AF] print:bg-white print:text-black">
+      <div className="print-letterhead hidden print:block">
+        <div className="print-brand-row">
+          <div>
+            <div className="print-brand">GREY <span>INVESTMENT</span></div>
+            <div className="print-subbrand">INVESTOR ACCOUNT STATEMENT</div>
+          </div>
+          <div className="print-statement-meta">
+            <strong>Statement Date</strong><br />
+            {date(new Date())}
+          </div>
+        </div>
+        <div className="print-rule" />
+      </div>
+
       <div className="flex flex-col gap-4 border-b border-slate-800 pb-5 sm:flex-row sm:items-center sm:justify-between print:border-b-black">
         <div>
           <button
@@ -262,7 +282,19 @@ const UserDetails = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="print-profile-card hidden print:flex">
+        <div className="print-avatar">{user.name?.charAt(0)?.toUpperCase() || "U"}</div>
+        <div className="print-profile-main">
+          <div className="print-profile-name">{user.name || "Unknown investor"}</div>
+          <div className="print-profile-details">
+            <span>{user.email || "—"}</span>
+            <span>{user.phone || "—"}</span>
+            <span>Joined {date(user.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="print-summary-grid grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <SummaryCard icon={PiggyBank} label="Total Invested" value={money(totals.totalInvested)} />
         <SummaryCard icon={TrendingUp} label="Total Profit" value={money(totals.totalProfit)} accent="text-emerald-400" />
         <SummaryCard icon={FileText} label="Portfolio Value" value={money(totals.totalValue)} accent="text-blue-400" />
@@ -271,7 +303,7 @@ const UserDetails = () => {
         <SummaryCard icon={Clock} label="Still Withdrawable" value={money(totals.currentAvailable)} accent="text-[#34D399]" />
       </div>
 
-      <section className="border border-slate-800 bg-[#1F2937] print:border-black print:bg-white">
+      <section className="print-section border border-slate-800 bg-[#1F2937] print:border-black print:bg-white">
         <div className="flex items-center justify-between border-b border-slate-800 bg-[#090A0F] px-4 py-3 print:border-black print:bg-white">
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wide text-white print:text-black">Account Statement</h2>
@@ -288,13 +320,13 @@ const UserDetails = () => {
         </div>
       </section>
 
-      <section className="border border-slate-800 bg-[#1F2937] print:border-black print:bg-white">
+      <section className="print-section border border-slate-800 bg-[#1F2937] print:border-black print:bg-white">
         <div className="border-b border-slate-800 bg-[#090A0F] px-4 py-3 print:border-black print:bg-white">
           <h2 className="text-sm font-bold uppercase tracking-wide text-white print:text-black">Transaction Statement</h2>
           <p className="mt-1 text-[11px] text-[#9CA3AF] print:text-black">Credits, withdrawals, allocations and other recorded account activity.</p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[780px] text-left text-xs">
+        <div className="overflow-x-auto print:overflow-visible">
+          <table className="statement-table w-full min-w-[780px] text-left text-xs print:min-w-0">
             <thead className="bg-[#090A0F] text-[10px] uppercase text-[#9CA3AF] print:bg-white print:text-black">
               <tr>
                 <th className="px-4 py-3">Date</th>
@@ -327,12 +359,12 @@ const UserDetails = () => {
         </div>
       </section>
 
-      <section className="border border-slate-800 bg-[#1F2937] print:border-black print:bg-white">
+      <section className="print-section border border-slate-800 bg-[#1F2937] print:border-black print:bg-white">
         <div className="border-b border-slate-800 bg-[#090A0F] px-4 py-3 print:border-black print:bg-white">
           <h2 className="text-sm font-bold uppercase tracking-wide text-white print:text-black">Investment Allocations</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[950px] text-left text-xs">
+        <div className="overflow-x-auto print:overflow-visible">
+          <table className="allocation-table w-full min-w-[950px] text-left text-xs print:min-w-0">
             <thead className="bg-[#090A0F] text-[10px] uppercase text-[#9CA3AF] print:bg-white print:text-black">
               <tr>
                 <th className="px-4 py-3">Investment</th>
@@ -350,7 +382,16 @@ const UserDetails = () => {
                 <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">No investment allocations.</td></tr>
               ) : allocations.map((allocation, index) => (
                 <tr key={allocation._id || allocation.id || index}>
-                  <td className="px-4 py-3 font-bold text-white print:text-black">{allocation.investment?.title || "Unknown investment"}<span className="block text-[10px] font-normal text-slate-500">{allocation.investment?.reference || "No reference"}</span></td>
+                  <td className="px-4 py-3 font-bold text-white print:text-black">
+                    <Link
+                      to={`${isSuperAdmin ? "/superadmin" : "/dashboard"}/users/${id}/investment/${investmentIdOf(allocation)}`}
+                      className="group inline-flex items-center gap-2 hover:text-[#34D399] no-print"
+                    >
+                      <span>{allocation.investment?.title || "Unknown investment"}</span>
+                    </Link>
+                    <span className="print:inline hidden">{allocation.investment?.title || "Unknown investment"}</span>
+                    <span className="block text-[10px] font-normal text-slate-500">{allocation.investment?.reference || "No reference"}</span>
+                  </td>
                   <td className="px-4 py-3 text-right font-mono text-white print:text-black">{money(allocation.principal)}</td>
                   <td className="px-4 py-3 text-right font-mono text-emerald-400 print:text-black">{money(allocation.profitEarned)}</td>
                   <td className="px-4 py-3 text-right font-mono text-blue-400 print:text-black">{money(allocation.totalValue ?? number(allocation.principal) + number(allocation.profitEarned))}</td>
@@ -365,12 +406,12 @@ const UserDetails = () => {
         </div>
       </section>
 
-      <section className="border border-slate-800 bg-[#1F2937] print:border-black print:bg-white">
+      <section className="print-section border border-slate-800 bg-[#1F2937] print:border-black print:bg-white">
         <div className="border-b border-slate-800 bg-[#090A0F] px-4 py-3 print:border-black print:bg-white">
           <h2 className="text-sm font-bold uppercase tracking-wide text-white print:text-black">Withdrawal History</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[750px] text-left text-xs">
+        <div className="overflow-x-auto print:overflow-visible">
+          <table className="withdrawal-table w-full min-w-[750px] text-left text-xs print:min-w-0">
             <thead className="bg-[#090A0F] text-[10px] uppercase text-[#9CA3AF] print:bg-white print:text-black">
               <tr><th className="px-4 py-3">Date</th><th className="px-4 py-3">Amount</th><th className="px-4 py-3">Bank / Account</th><th className="px-4 py-3 text-right">Status</th></tr>
             </thead>
