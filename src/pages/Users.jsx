@@ -591,7 +591,7 @@ const Users = () => {
                         <button title="Login as investor" className="p-1.5 text-[#9CA3AF] hover:text-[#3B82F6] hover:bg-[#090A0F] transition-all inline-flex items-center justify-center cursor-pointer"><LogIn size={15} /></button>
                       </Popover>}
                       <button
-                        onClick={() => openUserDetailsModal(user)}
+                        onClick={() => navigate(`${currentUser?.role === "superadmin" ? "/superadmin/users" : "/dashboard/users"}/${user._id || user.id}`)}
                         title="View investor details"
                         className="p-1.5 text-[#9CA3AF] hover:text-[#34D399] hover:bg-[#090A0F] transition-all inline-flex items-center justify-center cursor-pointer"
                       >

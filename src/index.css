@@ -161,3 +161,40 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 } */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print,
+  nav,
+  aside,
+  header {
+    display: none !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  section {
+    break-inside: avoid;
+  }
+}
