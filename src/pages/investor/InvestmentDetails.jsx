@@ -277,12 +277,12 @@ const InvestmentDetails = () => {
         ? "bg-rose-950/40 border-rose-500/30"
         : "bg-emerald-950/20 border-emerald-500/20",
     },
-    {
-      label: "Maintenance Fees Charged",
-      val: totalMaintenanceFees,
-      icon: Coins,
-      color: "text-amber-400",
-    },
+    // {
+    //   label: "Maintenance Fees Charged",
+    //   val: totalMaintenanceFees,
+    //   icon: Coins,
+    //   color: "text-amber-400",
+    // },
     {
       label: "Amount Collected",
       val: totalAmountCollected, // Uses calculated total from history or details.myInvestment?.amountCollected
