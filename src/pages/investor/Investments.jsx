@@ -200,22 +200,25 @@ const Investments = () => {
 
                                 <div className="mt-3 rounded-md bg-[#0a0c14] border border-slate-900 p-2.5">
                                   <p className="text-[9px] text-emerald-500/80 uppercase tracking-wider font-semibold">
-                                    Withdrawable Limit
+                                    Available
                                   </p>
                                   <p className="text-lg font-black text-emerald-400 mt-0.5 leading-tight">
-                                    ₦{Number(inv.withdrawableLimit || 0).toLocaleString()}
+                                    ₦{Number(inv.availableToWithdraw || 0).toLocaleString()}
                                   </p>
                                 </div>
+                                
 
                                 <div className="grid grid-cols-2 gap-2 mt-2.5">
-                                  <div>
+                                  
+                                  <div className="">
                                     <p className="text-[8px] text-slate-500 uppercase tracking-wider font-semibold">
-                                      Available
+                                      Total Admin Allocation
                                     </p>
                                     <p className="text-xs font-bold text-slate-100 mt-0.5">
-                                      ₦{Number(inv.availableToWithdraw || 0).toLocaleString()}
+                                      ₦{Number(inv.withdrawableLimit || 0).toLocaleString()}
                                     </p>
                                   </div>
+
                                   <div className="text-right">
                                     <p className="text-[8px] text-slate-500 uppercase tracking-wider font-semibold">
                                       Profit
