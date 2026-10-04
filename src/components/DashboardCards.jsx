@@ -114,6 +114,15 @@ const DashboardCards = ({ cards, loading }) => {
     },
 
     {
+      title: "System Maintenance",
+      value: formatMoney(cards?.totalSystemMaintenanceProfit || 0),
+      icon: Landmark,
+      color: "text-cyan-400",
+      bg: "bg-cyan-500/10",
+      description: "System maintenance share",
+    },
+
+    {
       title: "Total Withdrawn",
       value: formatMoney(cards?.totalWithdrawn || 0),
       icon: Wallet,
@@ -147,6 +156,15 @@ const DashboardCards = ({ cards, loading }) => {
       color: "text-green-400",
       bg: "bg-green-500/10",
       description: "Successfully paid",
+    },
+
+    {
+      title: "Liquid Available",
+      value: formatMoney(cards?.liquidity?.liquidAvailable || 0),
+      icon: HandCoins,
+      color: (cards?.liquidity?.liquidAvailable || 0) === 0 ? "text-rose-400" : "text-emerald-400",
+      bg: (cards?.liquidity?.liquidAvailable || 0) === 0 ? "bg-rose-500/10" : "bg-emerald-500/10",
+      description: `Across ${cards?.liquidity?.allocationCount || 0} allocations`,
     },
   ];
 

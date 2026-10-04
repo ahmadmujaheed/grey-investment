@@ -16,8 +16,8 @@ import {
   Clock,
 } from "lucide-react";
 import { Tag, message, Skeleton } from "antd";
-import { fetchUserById } from "../api/userApi";
-import { fetchAllWithdrawalsApi } from "../api/withdrawalApi";
+import { chargeUserMaintenanceFee, fetchUserById, resetUserPassword } from "../api/userApi";
+import { fetchAllWithdrawalsApi, fetchApprovedWithdrawalTotalSummaryApi } from "../api/withdrawalApi";
 
 const money = (value = 0) =>
   new Intl.NumberFormat("en-NG", {
@@ -51,8 +51,8 @@ const dateTime = (value) => {
 const available = (allocation) =>
   number(
     allocation?.availableBalance ??
-      allocation?.remainingWithdrawable ??
-      allocation?.availableToWithdraw,
+    allocation?.remainingWithdrawable ??
+    allocation?.availableToWithdraw,
   );
 
 const investmentIdOf = (allocation) =>
@@ -95,6 +95,12 @@ const UserDetails = () => {
   const [withdrawals, setWithdrawals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [withdrawalsLoading, setWithdrawalsLoading] = useState(true);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [maintenanceFee, setMaintenanceFee] = useState({ amount: "", password: "" });
+  const [chargingMaintenanceFee, setChargingMaintenanceFee] = useState(false);
+  const [collectedSummary, setCollectedSummary] = useState(null)
+  const [summaryLoading, setSummaryLoading] = useState(true);
 
   const load = async () => {
     try {
@@ -125,11 +131,73 @@ const UserDetails = () => {
     } finally {
       setWithdrawalsLoading(false);
     }
+
+
+    try {
+      setSummaryLoading(true);
+      const response = await fetchApprovedWithdrawalTotalSummaryApi(id);
+      setCollectedSummary(response?.success ? response : null);
+    } catch (error) {
+      console.warn("Could not load collected summary:", error)
+      setCollectedSummary(null)
+    } finally {
+      setSummaryLoading(false);
+    }
   };
+
+
 
   useEffect(() => {
     load();
   }, [id]);
+
+
+  const handleResetPassword = async () => {
+    if (resetPassword.length < 8) {
+      message.error("Temporary password must be at least 8 characters.");
+      return;
+    }
+    try {
+      setResettingPassword(true);
+      const response = await resetUserPassword({
+        userId: user?._id || user?.id,
+        temporaryPassword: resetPassword,
+      });
+      message.success(response?.message || "Password reset successfully.");
+      setResetPassword("");
+    } catch (error) {
+      message.error(error?.response?.data?.message || "Failed to reset password.");
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const handleChargeMaintenanceFee = async (event) => {
+    event.preventDefault();
+    const amount = Number(maintenanceFee.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || !maintenanceFee.password) {
+      message.error("Enter a valid fee amount and your administrator password.");
+      return;
+    }
+
+    try {
+      setChargingMaintenanceFee(true);
+      const response = await chargeUserMaintenanceFee(user?._id || user?.id, {
+        amount,
+        password: maintenanceFee.password,
+      });
+      message.success(response?.message || "Maintenance fee charged successfully.");
+      setMaintenanceFee({ amount: "", password: "" });
+      const refreshed = await fetchUserById(id);
+      setUser(refreshed?.user || refreshed?.data?.user || refreshed?.data || refreshed);
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message || "Unable to charge maintenance fee.",
+      );
+    } finally {
+      setChargingMaintenanceFee(false);
+    }
+  };
 
   const allocations = user?.allocations || [];
 
@@ -147,10 +215,18 @@ const UserDetails = () => {
     const approvedWithdrawals = withdrawals.filter(
       (w) => String(w.status || "").toLowerCase() === "approved",
     );
-    const collected = approvedWithdrawals.reduce(
-      (sum, w) => sum + number(w.amountFromBalance ?? w.amount),
-      0,
-    );
+    // const collected = approvedWithdrawals.reduce(
+    //   (sum, w) => sum + number(w.amountFromBalance ?? w.amount),
+    //   0,
+    // );
+
+    const collected = collectedSummary?.totalApproved ?? withdrawals
+      .filter((w) => String(w.status || "").toLowerCase() === "approved")
+      .reduce((sum, w) => sum + number(w.amountFromBalance ?? w.amount), 0);
+
+    // const collectedAdvance = collectedSummary?.totalAdvance ?? 0;
+    // const collectedCount   = collectedSummary?.approvedWithdrawalCount ?? 0;
+
 
     return {
       totalInvested,
@@ -161,7 +237,7 @@ const UserDetails = () => {
       reinvested,
       collected,
     };
-  }, [allocations, withdrawals]);
+  }, [allocations, withdrawals, collectedSummary]);
 
   const statementRows = useMemo(() => {
     const raw = [
@@ -274,13 +350,61 @@ const UserDetails = () => {
           </div>
         </div>
 
-        <button
-          onClick={downloadStatement}
-          className="no-print inline-flex items-center justify-center gap-2 bg-[#34D399] px-4 py-2.5 text-xs font-bold text-[#090A0F] hover:bg-[#06D6A0]"
-        >
-          <Download size={16} /> Download Statement / PDF
-        </button>
+        <div className="no-print flex flex-wrap items-center gap-2">
+          <button onClick={downloadStatement} className="inline-flex items-center justify-center gap-2 bg-[#34D399] px-4 py-2.5 text-xs font-bold text-[#090A0F] hover:bg-[#06D6A0]">
+            <Download size={16} /> Download Statement / PDF
+          </button>
+          <div className="flex flex-wrap items-center gap-2 rounded border border-slate-700 bg-[#090A0F] p-2">
+            <input type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Temporary password" className="w-40 bg-transparent px-2 py-1 text-xs text-white outline-none" />
+            <button onClick={handleResetPassword} disabled={resettingPassword || resetPassword.length < 8} className="bg-amber-500 px-3 py-2 text-xs font-bold text-black disabled:opacity-50">
+              {resettingPassword ? "Resetting..." : "Reset Password"}
+            </button>
+          </div>
+        </div>
       </div>
+
+      <section className="no-print border border-slate-800 bg-[#1F2937] p-4 sm:p-5">
+        <div className="mb-4">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-white">Charge Maintenance Fee</h2>
+          <p className="mt-1 text-xs text-slate-400">
+            The fee is deducted from this investor’s available profit. Your administrator password is required.
+          </p>
+        </div>
+        <form onSubmit={handleChargeMaintenanceFee} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+          <label className="block space-y-1.5 text-xs">
+            <span className="font-bold text-slate-300">Amount (₦)</span>
+            <input
+              required
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={maintenanceFee.amount}
+              onChange={(event) => setMaintenanceFee((current) => ({ ...current, amount: event.target.value }))}
+              className="w-full border border-slate-700 bg-[#090A0F] px-3 py-2.5 text-white"
+              placeholder="Enter fee amount"
+            />
+          </label>
+          <label className="block space-y-1.5 text-xs">
+            <span className="font-bold text-slate-300">Administrator password</span>
+            <input
+              required
+              type="password"
+              autoComplete="current-password"
+              value={maintenanceFee.password}
+              onChange={(event) => setMaintenanceFee((current) => ({ ...current, password: event.target.value }))}
+              className="w-full border border-slate-700 bg-[#090A0F] px-3 py-2.5 text-white"
+              placeholder="Confirm your password"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={chargingMaintenanceFee || loading}
+            className="bg-amber-400 px-4 py-2.5 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {chargingMaintenanceFee ? "Charging..." : "Charge User"}
+          </button>
+        </form>
+      </section>
 
       <div className="print-profile-card hidden print:flex">
         <div className="print-avatar">{user.name?.charAt(0)?.toUpperCase() || "U"}</div>
@@ -295,12 +419,13 @@ const UserDetails = () => {
       </div>
 
       <div className="print-summary-grid grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <SummaryCard icon={PiggyBank} label="Total Invested" value={money(totals.totalInvested)} />
+        <SummaryCard icon={PiggyBank} label="Total Invested" value={money(totals.totalInvested)} accent="text-white" />
         <SummaryCard icon={TrendingUp} label="Total Profit" value={money(totals.totalProfit)} accent="text-emerald-400" />
-        <SummaryCard icon={FileText} label="Portfolio Value" value={money(totals.totalValue)} accent="text-blue-400" />
-        <SummaryCard icon={Wallet} label="Admin Withdrawal Allocation" value={money(totals.allocated)} accent="text-amber-400" />
-        <SummaryCard icon={ArrowUpRight} label="Amount Collected" value={money(totals.collected)} accent="text-rose-400" />
-        <SummaryCard icon={Clock} label="Still Withdrawable" value={money(totals.currentAvailable)} accent="text-[#34D399]" />
+        <SummaryCard icon={FileText} label="Total Portfolio Value" value={money(totals.totalValue)} accent="text-indigo-400" />
+        <SummaryCard icon={Clock} label="Total Available Balance" value={money(totals.currentAvailable)} accent="text-emerald-400" />
+        <SummaryCard icon={ArrowUpRight} label="Total Amount Collected" value={money(totals.collected)} accent="text-teal-400" />
+        <SummaryCard icon={Wallet} label="Total Admin Allocation" value={money(totals.allocated)} accent="text-fuchsia-500" />
+        <SummaryCard icon={RefreshCcw} label="Total Reinvested" value={money(totals.reinvested)} accent="text-amber-400" />
       </div>
 
       <section className="print-section border border-slate-800 bg-[#1F2937] print:border-black print:bg-white">
@@ -381,7 +506,24 @@ const UserDetails = () => {
               {allocations.length === 0 ? (
                 <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">No investment allocations.</td></tr>
               ) : allocations.map((allocation, index) => (
-                <tr key={allocation._id || allocation.id || index}>
+                <tr
+                  key={allocation._id || allocation.id || index}
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Open statement for ${allocation.investment?.title || "this investment"}`}
+                  onClick={(event) => {
+                    if (event.target.closest("a, button, input, select")) return;
+                    const investmentId = investmentIdOf(allocation);
+                    if (investmentId) navigate(`${isSuperAdmin ? "/superadmin" : "/dashboard"}/users/${id}/investment/${investmentId}`);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+                    event.preventDefault();
+                    const investmentId = investmentIdOf(allocation);
+                    if (investmentId) navigate(`${isSuperAdmin ? "/superadmin" : "/dashboard"}/users/${id}/investment/${investmentId}`);
+                  }}
+                  className="cursor-pointer hover:bg-[#090A0F]/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#34D399]"
+                >
                   <td className="px-4 py-3 font-bold text-white print:text-black">
                     <Link
                       to={`${isSuperAdmin ? "/superadmin" : "/dashboard"}/users/${id}/investment/${investmentIdOf(allocation)}`}

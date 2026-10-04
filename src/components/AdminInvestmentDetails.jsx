@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "motion/react";
 import { message, Modal, Popconfirm, Popover, Select, Tag } from "antd";
 import {
@@ -33,6 +33,7 @@ import {
 
 const AdminInvestmentDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [investmentDetails, setInvestmentDetails] = useState(null);
@@ -40,6 +41,7 @@ const AdminInvestmentDetails = () => {
   const [inputProfitAmount, setInputProfitAmount] = useState("");
   const [companyPercent, setCompanyPercent] = useState("");
   const [investorPercent, setInvestorPercent] = useState("");
+  const [systemMaintenancePercent, setSystemMaintenancePercent] = useState("");
   const [distribute, setDistribute] = useState(false);
 
   const [users, setUsers] = useState([]);
@@ -50,10 +52,12 @@ const AdminInvestmentDetails = () => {
   const [selectedSource, setSelectedSource] = useState("capital");
 
   // The user's investment/allocation from which funds will be reinvested
-  const [sourceAllocationId, setSourceAllocationId] = useState(undefined);
+  const [sourceAllocationIds, setSourceAllocationIds] = useState([]);
+  const [sourceAllocationAmounts, setSourceAllocationAmounts] = useState({});
   const [walletBalance, setWalletBalance] = useState(0);
 
   const [newInvestorAmount, setNewInvestorAmount] = useState("");
+  const [freshCapitalAmount, setFreshCapitalAmount] = useState("");
   const [allocate, setAllocate] = useState(false);
 
   const [addWithdrawable, setAddWithdrawable] = useState(null);
@@ -67,6 +71,7 @@ const AdminInvestmentDetails = () => {
   const [packageSaving, setPackageSaving] = useState(false);
   const [editingAllocation, setEditingAllocation] = useState(null);
   const [editedPrincipal, setEditedPrincipal] = useState("");
+  const [editedSourceAmounts, setEditedSourceAmounts] = useState([]);
   const [principalSaving, setPrincipalSaving] = useState(false);
   const [resetPassword, setResetPassword] = useState("");
   const [resetPopoverOpen, setResetPopoverOpen] = useState(false);
@@ -75,9 +80,7 @@ const AdminInvestmentDetails = () => {
   const totalEligibleForWithdrawal = Number(
     addWithdrawable?.totalInvestment ?? addWithdrawable?.totalValue ?? 0,
   );
-  const currentGrantedLimit = Number(
-    addWithdrawable?.withdrawableLimit || 0,
-  );
+  const currentGrantedLimit = Number(addWithdrawable?.withdrawableLimit || 0);
   const remainingLimitCapacity = Math.max(
     0,
     totalEligibleForWithdrawal - currentGrantedLimit,
@@ -169,9 +172,7 @@ const AdminInvestmentDetails = () => {
     try {
       setUsersLoading(true);
       const data = await fetchAllUsers();
-      setUsers(
-        (data?.users || []).filter((user) => user?.role !== "admin"),
-      );
+      setUsers((data?.users || []).filter((user) => user?.role !== "admin"));
     } catch (error) {
       console.error("Failed to fetch users:", error);
       message.error("Unable to load platform users.");
@@ -192,7 +193,7 @@ const AdminInvestmentDetails = () => {
 
   // const handleSourceChange = (source) => {
   //   setSelectedSource(source);
-  //   setSourceAllocationId(undefined);
+  //   setSourceAllocationIds([]);
   //   setWalletBalance(0);
   //   setNewInvestorAmount("");
   // };
@@ -235,17 +236,21 @@ const AdminInvestmentDetails = () => {
     setTargetUserId(userId);
     setSelectedUser(user || null);
 
-    setSourceAllocationId(undefined);
+    setSourceAllocationIds([]);
+    setSourceAllocationAmounts({});
     setWalletBalance(0);
     setNewInvestorAmount("");
+    setFreshCapitalAmount("");
   };
 
   const handleSourceChange = (source) => {
     setSelectedSource(source);
 
-    setSourceAllocationId(undefined);
+    setSourceAllocationIds([]);
+    setSourceAllocationAmounts({});
     setWalletBalance(0);
     setNewInvestorAmount("");
+    setFreshCapitalAmount("");
   };
 
   const getAvailableBalance = (allocation) =>
@@ -256,25 +261,115 @@ const AdminInvestmentDetails = () => {
         0,
     );
 
-  const handleSourceAllocationSelect = (allocationId) => {
-    const allocation = selectedUser?.allocations?.find(
-      (item) =>
-        String(item.allocationId || item._id || item.id) ===
-        String(allocationId),
+  const formatAmountInput = (value) =>
+    value === "" || value === null || value === undefined
+      ? ""
+      : new Intl.NumberFormat("en-NG", {
+          maximumFractionDigits: 0,
+        }).format(Number(value) || 0);
+
+  const parseAmountInput = (value) =>
+    String(value ?? "").replace(/[^0-9]/g, "");
+
+  const getSelectedAllocations = (ids = sourceAllocationIds) => {
+    return (selectedUser?.allocations || []).filter((allocation) => {
+      const allocationId = String(
+        allocation.allocationId || allocation._id || allocation.id,
+      );
+
+      return ids.includes(allocationId);
+    });
+  };
+
+  const getTotalOriginalSelectedBalance = (ids = sourceAllocationIds) => {
+    return getSelectedAllocations(ids).reduce((total, allocation) => {
+      return total + getAvailableBalance(allocation);
+    }, 0);
+  };
+
+  const selectedReinvestmentAmount = sourceAllocationIds.reduce(
+    (total, allocationId) => total + Number(sourceAllocationAmounts[allocationId] || 0),
+    0,
+  );
+  const currentFreshCapitalAmount = selectedSource === "capital"
+    ? Number(newInvestorAmount || 0)
+    : selectedSource === "mixed"
+      ? Number(freshCapitalAmount || 0)
+      : 0;
+  const totalAllocationAmount = selectedReinvestmentAmount + currentFreshCapitalAmount;
+
+  const handleSourceAllocationSelect = (allocationIds) => {
+    const ids = Array.isArray(allocationIds) ? allocationIds.map(String) : [];
+
+    const allocations = getSelectedAllocations(ids);
+    const nextAmounts = {};
+
+    allocations.forEach((allocation) => {
+      const allocationId = String(
+        allocation.allocationId || allocation._id || allocation.id,
+      );
+
+      // This field means: amount to reinvest from this investment.
+      // Start at zero. The admin enters the amount to take from each
+      // investment. The original balance remains the maximum allowed.
+      nextAmounts[allocationId] = 0;
+    });
+
+    const totalToReinvest = 0;
+    const originalTotal = getTotalOriginalSelectedBalance(ids);
+    const remainingAvailableBalance = originalTotal;
+
+    setSourceAllocationIds(ids);
+    setSourceAllocationAmounts(nextAmounts);
+    setNewInvestorAmount(String(totalToReinvest));
+    setWalletBalance(remainingAvailableBalance);
+  };
+
+  const handleSourceAllocationAmountChange = (allocation, rawValue) => {
+    const allocationId = String(
+      allocation.allocationId || allocation._id || allocation.id,
     );
 
-    const availableBalance = getAvailableBalance(allocation);
+    const originalMaximum = getAvailableBalance(allocation);
+    const cleanedValue = parseAmountInput(rawValue);
+    const value = cleanedValue === "" ? "" : Number(cleanedValue);
 
-    setSourceAllocationId(allocationId);
-    setWalletBalance(availableBalance);
+    if (value !== "" && value > originalMaximum) {
+      message.warning(
+        `Cannot exceed ${formatCurrency(originalMaximum)} for this investment.`,
+      );
+      return;
+    }
 
-    // Prefill input with the available balance.
-    setNewInvestorAmount(String(availableBalance));
+    // Do not compare against the previous keystroke. Doing that breaks
+    // normal editing because typing 300000 happens one character at a time
+    // and the temporary value can be smaller than the final value.
+    // The only real restriction is that the entered amount cannot exceed
+    // this investment's original available balance.
+
+    const nextAmounts = {
+      ...sourceAllocationAmounts,
+      [allocationId]: value,
+    };
+
+    const totalToReinvest = sourceAllocationIds.reduce((total, id) => {
+      return total + Number(nextAmounts[id] || 0);
+    }, 0);
+
+    const originalTotal = getTotalOriginalSelectedBalance();
+    const remainingAvailableBalance = Math.max(
+      0,
+      originalTotal - totalToReinvest,
+    );
+
+    setSourceAllocationAmounts(nextAmounts);
+    setNewInvestorAmount(String(totalToReinvest));
+    setWalletBalance(remainingAvailableBalance);
   };
 
   const handleAmountChange = (event) => {
     const value = event.target.value;
-    const amount = Number(value);
+    const amount = Number(parseAmountInput(value));
 
     if (selectedSource === "profit" && amount > walletBalance) {
       message.warning(
@@ -285,13 +380,28 @@ const AdminInvestmentDetails = () => {
       return;
     }
 
-    setNewInvestorAmount(value);
+    setNewInvestorAmount(parseAmountInput(value));
   };
 
   const handleAddInvestor = async (event) => {
     event.preventDefault();
 
-    const amount = Number(newInvestorAmount);
+    const sourceContributions = sourceAllocationIds
+      .map((allocationId) => ({
+        allocationId,
+        amount: Number(sourceAllocationAmounts[allocationId] || 0),
+      }))
+      .filter((item) => item.amount > 0);
+    const sourceAmount = sourceContributions.reduce(
+      (total, item) => total + item.amount,
+      0,
+    );
+    const freshAmount = selectedSource === "capital"
+      ? Number(newInvestorAmount || 0)
+      : selectedSource === "mixed"
+        ? Number(freshCapitalAmount || 0)
+        : 0;
+    const amount = sourceAmount + freshAmount;
     const investmentId = id;
 
     if (!investmentId) {
@@ -309,24 +419,18 @@ const AdminInvestmentDetails = () => {
       return;
     }
 
-    if (selectedSource === "profit" && !sourceAllocationId) {
-      message.warning("Please select the source investment.");
-      return;
-    }
-
-    if (selectedSource === "profit" && amount > walletBalance) {
-      message.warning(
-        `Only ${formatCurrency(walletBalance)} is available for reinvestment.`,
-      );
+    if (selectedSource === "profit" && sourceContributions.length === 0) {
+      message.warning("Enter an amount from at least one source investment.");
       return;
     }
 
     const payload = {
       userId: targetUserId,
       amount,
-      isReinvestment: selectedSource === "profit",
-      sourceAllocationId:
-        selectedSource === "profit" ? sourceAllocationId : undefined,
+      freshAmount,
+      isReinvestment: sourceContributions.length > 0,
+      sourceAllocationIds: sourceContributions.map((item) => item.allocationId),
+      sourceAllocationAmounts: sourceContributions,
     };
 
     try {
@@ -335,17 +439,21 @@ const AdminInvestmentDetails = () => {
       await addInvestorToPool(investmentId, payload);
 
       message.success(
-        selectedSource === "profit"
-          ? "Reinvestment completed successfully."
-          : "Investor added successfully.",
+        sourceContributions.length > 0 && freshAmount > 0
+          ? "Mixed investment completed successfully."
+          : sourceContributions.length > 0
+            ? "Reinvestment completed successfully."
+            : "Investor added successfully.",
       );
 
       setTargetUserId(undefined);
       setSelectedUser(null);
       setSelectedSource("capital");
-      setSourceAllocationId(undefined);
+      setSourceAllocationIds([]);
+      setSourceAllocationAmounts({});
       setWalletBalance(0);
       setNewInvestorAmount("");
+      setFreshCapitalAmount("");
 
       await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
     } catch (error) {
@@ -359,124 +467,33 @@ const AdminInvestmentDetails = () => {
     }
   };
 
-  // const handleAddInvestor = async (event) => {
-  //   event.preventDefault();
-
-  //   const amount = Number(newInvestorAmount);
-
-  //   if (!targetUserId) {
-  //     message.warning("Please select a user.");
-  //     return;
-  //   }
-
-  //   if (!Number.isFinite(amount) || amount <= 0) {
-  //     message.warning("Enter a valid investment amount.");
-  //     return;
-  //   }
-
-  //   if (selectedSource === "profit" && !sourceAllocationId) {
-  //     message.warning("Please select the source investment.");
-  //     return;
-  //   }
-
-  //   if (selectedSource === "profit" && amount > walletBalance) {
-  //     message.warning(
-  //       `Only ${formatCurrency(walletBalance)} is available for reinvestment.`,
-  //     );
-  //     return;
-  //   }
-
-  //   const poolId = investmentDetails?.investment?._id || id;
-
-  //   const payload = {
-  //     userId: targetUserId,
-  //     amount,
-  //     isReinvestment: selectedSource === "profit",
-  //     sourceAllocationId:
-  //       selectedSource === "profit" ? sourceAllocationId : undefined,
-  //   };
-
-  //   try {
-  //     setAllocate(true);
-
-  //     await addInvestorToPool(poolId, payload);
-
-  //     message.success(
-  //       selectedSource === "profit"
-  //         ? "Reinvestment completed successfully."
-  //         : "Investor added successfully.",
-  //     );
-
-  //     setTargetUserId(undefined);
-  //     setSelectedUser(null);
-  //     setSelectedSource("capital");
-  //     setSourceAllocationId(undefined);
-  //     setWalletBalance(0);
-  //     setNewInvestorAmount("");
-
-  //     await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
-  //   } catch (error) {
-  //     console.error("Allocation failed:", error);
-
-  //     message.error(
-  //       error?.response?.data?.message || "Investment allocation failed.",
-  //     );
-  //   } finally {
-  //     setAllocate(false);
-  //   }
-  // };
-
-  // const handleDistributeProfit = async (event) => {
-  //   event.preventDefault();
-
-  //   const poolId = investmentDetails?.investment?._id || id;
-
-  //   // console.log(poolId)
-
-  //   try {
-  //     setDistribute(true);
-
-  //    const res = await distributeInvestmentProfits(poolId, {
-  //       totalProfit: inputProfitAmount,
-  //       companyShare: companyPercent,
-  //       investorShare: investorPercent,
-  //     });
-
-  //     console.log(res)
-  //     message.success("Profit distribution completed.");
-  //     await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
-  //   } catch (error) {
-  //     console.error(error);
-  //     message.error("Failed to distribute profit.");
-  //   } finally {
-  //     setDistribute(false);
-  //   }
-  // };
-
   const handleDistributeProfit = async (event) => {
-  event.preventDefault();
+    event.preventDefault();
 
-  const poolId = investmentDetails?.investment?._id || id;
+    const poolId = investmentDetails?.investment?._id || id;
 
-  try {
-    setDistribute(true);
+    try {
+      setDistribute(true);
 
-    const res = await distributeInvestmentProfits(poolId, {
-      totalProfit: inputProfitAmount,
-      companyShare: companyPercent,
-      investorShare: investorPercent,
-    });
+      const res = await distributeInvestmentProfits(poolId, {
+        totalProfit: inputProfitAmount,
+        companyShare: companyPercent,
+        investorShare: investorPercent,
+        systemMaintenanceShare: systemMaintenancePercent,
+      });
 
-    console.log(res);
-    message.success("Profit distribution completed.");
-    await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
-  } catch (error) {
-    console.error(error);
-    message.error("Failed to distribute profit.");
-  } finally {
-    setDistribute(false);
-  }
-};
+      console.log(res);
+      message.success("Profit distribution completed.");
+      await Promise.all([loadInvestmentDetails(), loadPlatformUsers()]);
+    } catch (error) {
+      console.error(error);
+      message.error(
+        error.response?.data?.message || "Failed to distribute profit.",
+      );
+    } finally {
+      setDistribute(false);
+    }
+  };
 
   const removeInvestor = async (investor) => {
     const investmentId = id;
@@ -504,9 +521,7 @@ const AdminInvestmentDetails = () => {
 
   const openPackageEditor = () => {
     setPackageTitle(investmentDetails?.investment?.title || "");
-    setPackageTarget(
-      String(investmentDetails?.investment?.targetAmount || ""),
-    );
+    setPackageTarget(String(investmentDetails?.investment?.targetAmount || ""));
     setPackageImage(null);
     setIsEditPackageOpen(true);
   };
@@ -582,6 +597,12 @@ const AdminInvestmentDetails = () => {
 
   const openPrincipalEditor = (investor) => {
     setEditingAllocation(investor);
+    const rows = investor.reinvestmentSources?.length
+      ? investor.reinvestmentSources
+      : investor.sourceAllocation
+        ? [{ sourceAllocation: investor.sourceAllocation, originalAmount: investor.principal, amountStillReinvested: investor.principal, sourceInvestment: investor.sourceInvestment }]
+        : [];
+    setEditedSourceAmounts(rows.map((row) => ({ ...row, sourceAllocation: row.sourceAllocation?._id || row.sourceAllocation, amount: Number(row.amountStillReinvested ?? row.originalAmount ?? 0) })));
     setEditedPrincipal(String(investor.principal || ""));
   };
 
@@ -595,11 +616,7 @@ const AdminInvestmentDetails = () => {
 
     try {
       setPrincipalSaving(true);
-      await updateInvestorAmount(
-        id,
-        editingAllocation.allocationId,
-        amount,
-      );
+      await updateInvestorAmount(id, editingAllocation.allocationId, amount, editedSourceAmounts.length ? editedSourceAmounts.map((row) => ({ sourceAllocation: row.sourceAllocation, amount: Number(row.amount) })) : undefined);
       message.success("Investor amount updated successfully.");
       setEditingAllocation(null);
       setEditedPrincipal("");
@@ -637,72 +654,70 @@ const AdminInvestmentDetails = () => {
 
         <div className="flex items-center gap-3">
           {investmentDetails?.investment?.status === "completed" && (
-              <Popover
-                open={resetPopoverOpen}
-                onOpenChange={(open) => {
-                  if (!resettingInvestment) setResetPopoverOpen(open);
-                  if (!open && !resettingInvestment) setResetPassword("");
-                }}
-                trigger="click"
-                placement="bottomRight"
-                content={
-                  <div className="w-72 space-y-3 p-1">
-                    <div>
-                      <p className="font-semibold text-slate-900">
-                        Reset completed investment?
-                      </p>
-                      <p className="mt-1 text-xs text-slate-600">
-                        Profit will be reversed, but investors and principal
-                        will remain. Financially used profit cannot be reset.
-                      </p>
-                    </div>
-                    <input
-                      type="password"
-                      value={resetPassword}
-                      onChange={(event) =>
-                        setResetPassword(event.target.value)
-                      }
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") resetInvestment();
-                      }}
-                      disabled={resettingInvestment}
-                      placeholder="Administrator password"
-                      autoComplete="current-password"
-                      className="w-full border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-red-500"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        disabled={resettingInvestment}
-                        onClick={() => {
-                          setResetPopoverOpen(false);
-                          setResetPassword("");
-                        }}
-                        className="px-3 py-1.5 text-xs font-semibold text-slate-600"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        disabled={resettingInvestment || !resetPassword}
-                        onClick={resetInvestment}
-                        className="bg-red-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
-                      >
-                        {resettingInvestment ? "Resetting..." : "Confirm Reset"}
-                      </button>
-                    </div>
+            <Popover
+              open={resetPopoverOpen}
+              onOpenChange={(open) => {
+                if (!resettingInvestment) setResetPopoverOpen(open);
+                if (!open && !resettingInvestment) setResetPassword("");
+              }}
+              trigger="click"
+              placement="bottomRight"
+              content={
+                <div className="w-72 space-y-3 p-1">
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Reset completed investment?
+                    </p>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Profit will be reversed, but investors and principal will
+                      remain. Financially used profit cannot be reset.
+                    </p>
                   </div>
-                }
+                  <input
+                    type="password"
+                    value={resetPassword}
+                    onChange={(event) => setResetPassword(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") resetInvestment();
+                    }}
+                    disabled={resettingInvestment}
+                    placeholder="Administrator password"
+                    autoComplete="current-password"
+                    className="w-full border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-red-500"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      disabled={resettingInvestment}
+                      onClick={() => {
+                        setResetPopoverOpen(false);
+                        setResetPassword("");
+                      }}
+                      className="px-3 py-1.5 text-xs font-semibold text-slate-600"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={resettingInvestment || !resetPassword}
+                      onClick={resetInvestment}
+                      className="bg-red-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                    >
+                      {resettingInvestment ? "Resetting..." : "Confirm Reset"}
+                    </button>
+                  </div>
+                </div>
+              }
+            >
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 border border-red-700/50 bg-red-950/30 px-3 py-2 text-xs font-bold uppercase tracking-wider text-red-300 hover:text-red-200"
               >
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1.5 border border-red-700/50 bg-red-950/30 px-3 py-2 text-xs font-bold uppercase tracking-wider text-red-300 hover:text-red-200"
-                >
-                  <RotateCcw size={13} />
-                  Reset Investment
-                </button>
-              </Popover>
-            )}
+                <RotateCcw size={13} />
+                Reset Investment
+              </button>
+            </Popover>
+          )}
 
           <Popconfirm
             title="Archive Investment Package"
@@ -754,7 +769,7 @@ const AdminInvestmentDetails = () => {
                 {investmentDetails?.investment?.title}
               </h2>
 
-              <div className="grid grid-cols-3 gap-4 border-t border-slate-800 pt-4 text-xs font-semibold">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-slate-800 pt-4 text-xs font-semibold">
                 <div>
                   <span className="text-[#9CA3AF] block">Target Cap</span>
                   <span className="text-xl font-bold text-blue-400">
@@ -777,6 +792,21 @@ const AdminInvestmentDetails = () => {
                   <span className="text-[#9CA3AF] block">Members</span>
                   <span className="text-xl font-bold text-white">
                     {investmentDetails?.investors?.length || 0}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[#9CA3AF] block">System Maintenance Fee</span>
+                  <span className="text-xl font-bold text-amber-300">
+                    {formatCurrency(
+                      investmentDetails?.investment?.systemMaintenanceAccumulated ??
+                        investmentDetails?.investment?.systemMaintenanceProfit,
+                    )}
+                  </span>
+                  <span className="mt-1 block text-[10px] font-medium text-slate-500">
+                    {Number(investmentDetails?.investment?.systemMaintenancePercentage || 0) > 0
+                      ? `${Number(investmentDetails.investment.systemMaintenancePercentage)}% of profit`
+                      : "Accumulated system share"}
                   </span>
                 </div>
               </div>
@@ -803,7 +833,31 @@ const AdminInvestmentDetails = () => {
               {investmentDetails?.investors?.map((investor, index) => (
                 <div
                   key={investor.allocationId || index}
-                  className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-[#111827]"
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`Open full statement for ${investor.user?.name || "this investor"}`}
+                  onClick={(event) => {
+                    if (event.target.closest("button, a, input, select, [role='button']")) return;
+                    const userId = investor.user?._id || investor.user?.id;
+                    if (userId) navigate(`/dashboard/users/${userId}/investment/${id}`, {
+                      state: {
+                        returnTo: `/dashboard/investment/${id}`,
+                        returnLabel: "Back to Investment",
+                      },
+                    });
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+                    event.preventDefault();
+                    const userId = investor.user?._id || investor.user?.id;
+                    if (userId) navigate(`/dashboard/users/${userId}/investment/${id}`, {
+                      state: {
+                        returnTo: `/dashboard/investment/${id}`,
+                        returnLabel: "Back to Investment",
+                      },
+                    });
+                  }}
+                  className="grid grid-cols-12 gap-4 px-6 py-4 items-center cursor-pointer hover:bg-[#111827] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#34D399]"
                 >
                   <div className="col-span-2 flex items-center gap-3">
                     {/* <div className="w-8 h-8 rounded-full bg-[#090A0F] text-[#34D399] flex items-center justify-center font-bold text-sm">
@@ -837,19 +891,20 @@ const AdminInvestmentDetails = () => {
 
                   <div className="col-span-2 text-right">
                     <div className="flex flex-wrap justify-end gap-2">
-                    {investmentDetails?.investment?.status === "completed" && (
-                      <button
-                        onClick={() => {
-                          setAddWithdrawable(investor);
-                          setWithdrawableLimit("");
-                          setIsLimitModalOpen(true);
-                        }}
-                        className="text-[10px] text-amber-400 hover:text-amber-300 font-bold uppercase cursor-pointer"
-                      >
-                        Set Limit
-                      </button>
-                    )}
-                    {investmentDetails?.investment?.status === "pending" && (
+                      {investmentDetails?.investment?.status ===
+                        "completed" && (
+                        <button
+                          onClick={() => {
+                            setAddWithdrawable(investor);
+                            setWithdrawableLimit("");
+                            setIsLimitModalOpen(true);
+                          }}
+                          className="text-[10px] text-amber-400 hover:text-amber-300 font-bold uppercase cursor-pointer"
+                        >
+                          Set Limit
+                        </button>
+                      )}
+                      {investmentDetails?.investment?.status === "pending" && (
                         <button
                           type="button"
                           onClick={() => openPrincipalEditor(investor)}
@@ -857,25 +912,25 @@ const AdminInvestmentDetails = () => {
                         >
                           <Pencil size={12} /> Edit Amount
                         </button>
-                    )}
-                    {investmentDetails?.investment?.status === "pending" && (
-                    <Popconfirm
-                      title="Remove investor?"
-                      description={
-                        investor.sourceAllocation
-                          ? "This was reinvested capital. The principal will return to its original withdrawable balance."
-                          : "This was fresh capital. The allocation will be permanently removed."
-                      }
-                      okText="Yes, remove"
-                      cancelText="Cancel"
-                      okButtonProps={{ danger: true }}
-                      onConfirm={() => removeInvestor(investor)}
-                    >
-                      <button className="inline-flex items-center gap-1 text-[10px] text-rose-400 hover:text-rose-300 font-bold uppercase cursor-pointer">
-                        <UserMinus size={12} /> Remove
-                      </button>
-                    </Popconfirm>
-                    )}
+                      )}
+                      {investmentDetails?.investment?.status === "pending" && (
+                        <Popconfirm
+                          title="Remove investor?"
+                          description={
+                            investor.sourceAllocation
+                              ? "This was reinvested capital. The principal will return to its original withdrawable balance."
+                              : "This was fresh capital. The allocation will be permanently removed."
+                          }
+                          okText="Yes, remove"
+                          cancelText="Cancel"
+                          okButtonProps={{ danger: true }}
+                          onConfirm={() => removeInvestor(investor)}
+                        >
+                          <button className="inline-flex items-center gap-1 text-[10px] text-rose-400 hover:text-rose-300 font-bold uppercase cursor-pointer">
+                            <UserMinus size={12} /> Remove
+                          </button>
+                        </Popconfirm>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -901,11 +956,15 @@ const AdminInvestmentDetails = () => {
                 </label>
 
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="numeric"
                   required
-                  value={inputProfitAmount}
-                  onChange={(event) => setInputProfitAmount(event.target.value)}
+                  value={formatCurrencyInput(inputProfitAmount)}
+                  onChange={(event) =>
+                    setInputProfitAmount(
+                      sanitizeCurrencyInput(event.target.value),
+                    )
+                  }
                   disabled={
                     investmentDetails?.investment?.status === "completed"
                   }
@@ -914,7 +973,7 @@ const AdminInvestmentDetails = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                 <div className="space-y-1.5">
                   <label className="font-bold text-[#9CA3AF] block">
                     Company %
@@ -952,14 +1011,41 @@ const AdminInvestmentDetails = () => {
                     className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 text-white focus:outline-none focus:border-[#3B82F6]"
                   />
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="font-bold text-[#9CA3AF] block">
+                    System Maintenance %
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    required
+                    disabled={
+                      investmentDetails?.investment?.status === "completed"
+                    }
+                    value={systemMaintenancePercent}
+                    onChange={(event) =>
+                      setSystemMaintenancePercent(event.target.value)
+                    }
+                    className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 text-white focus:outline-none focus:border-[#3B82F6]"
+                  />
+                </div>
               </div>
+
+              <p className="text-[11px] text-[#9CA3AF]">
+                Company + Investor + System Maintenance must equal 100%.
+              </p>
 
               <button
                 type="submit"
                 disabled={
                   distribute ||
                   investmentDetails?.investment?.status === "completed" ||
-                  Number(companyPercent) + Number(investorPercent) !== 100
+                  Number(companyPercent) +
+                    Number(investorPercent) +
+                    Number(systemMaintenancePercent) !== 100
                 }
                 className="w-full py-2.5 bg-[#3B82F6] hover:bg-blue-600 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold text-sm"
               >
@@ -973,12 +1059,11 @@ const AdminInvestmentDetails = () => {
           <div className="border border-slate-800 bg-[#1F2937] p-5 space-y-4 rounded-none">
             <div className="flex items-center gap-2 text-white">
               <UserPlus size={18} className="text-[#34D399]" />
-              <h3 className="font-bold text-base">Add User to Pool</h3>
+              <h3 className="font-bold text-base">Trade + Reinvestment</h3>
             </div>
 
             <p className="text-xs text-[#9CA3AF] leading-relaxed">
-              Allocate fresh capital or reinvest a user&apos;s withdrawable
-              balance into this investment.
+              Allocate fresh capital, reinvest from available profit, or combine both in this investment.
             </p>
 
             {/* <form onSubmit={handleAddInvestor} className="space-y-4 text-xs">
@@ -1044,11 +1129,12 @@ const AdminInvestmentDetails = () => {
                           ? "Choose investment to reinvest from"
                           : "Select a user first"
                       }
-                      value={sourceAllocationId}
+                      mode="multiple"
+                      value={sourceAllocationIds}
                       onChange={handleSourceAllocationSelect}
                       disabled={!selectedUser}
                       className="w-full h-9 rounded-none"
-                      options={withdrawableAllocations.map((allocation) => ({
+                      options={(selectedUser?.allocations || []).filter((allocation) => !allocation.isClosed && getAvailableBalance(allocation) > 0).map((allocation) => ({
                         value: allocation._id || allocation.id,
                         label: `${
                           allocation.investment?.title || "Unknown investment"
@@ -1059,7 +1145,7 @@ const AdminInvestmentDetails = () => {
                     />
                   </div>
 
-                  {selectedUser && withdrawableAllocations.length === 0 && (
+                  {selectedUser && (selectedUser?.allocations || []).filter((allocation) => !allocation.isClosed && getAvailableBalance(allocation) > 0).length === 0 && (
                     <p className="text-[11px] text-red-400">
                       This user has no withdrawable balance available for
                       reinvestment.
@@ -1068,7 +1154,7 @@ const AdminInvestmentDetails = () => {
 
                   <div className="flex justify-between items-center px-3 py-2 bg-[#090A0F] border border-[#34D399]/20">
                     <span className="text-[10px] text-[#9CA3AF] uppercase">
-                      Available to reinvest
+                      Available balance after reinvestment
                     </span>
 
                     <span className="text-sm font-mono font-bold text-[#34D399]">
@@ -1086,17 +1172,25 @@ const AdminInvestmentDetails = () => {
                 </label>
 
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   required
-                  min="1"
-                  max={selectedSource === "profit" ? walletBalance : undefined}
-                  value={newInvestorAmount}
-                  onChange={handleAmountChange}
+                  value={
+                    selectedSource === "profit"
+                      ? formatAmountInput(newInvestorAmount)
+                      : formatAmountInput(newInvestorAmount)
+                  }
+                  readOnly={selectedSource === "profit"}
+                  onChange={
+                    selectedSource === "profit"
+                      ? undefined
+                      : handleAmountChange
+                  }
                   disabled={
                     investmentDetails?.investment?.status === "completed" ||
                     investmentDetails?.investment?.status === "archived" ||
                     (selectedSource === "profit" &&
-                      (!sourceAllocationId || walletBalance <= 0))
+                      (sourceAllocationIds.length === 0 || walletBalance <= 0))
                   }
                   placeholder={
                     selectedSource === "profit"
@@ -1105,6 +1199,37 @@ const AdminInvestmentDetails = () => {
                   }
                   className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 font-semibold text-white focus:outline-none focus:border-[#34D399] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
+                <div className="mt-2 space-y-2">
+                  {(selectedUser?.allocations || []).filter((allocation) =>
+                    sourceAllocationIds.includes(String(allocation.allocationId || allocation._id || allocation.id))
+                  ).map((allocation) => {
+                    const allocationId = String(allocation.allocationId || allocation._id || allocation.id);
+                    const maximum = getAvailableBalance(allocation);
+                    return (
+                      <div key={allocationId} className="flex items-center gap-2 border border-slate-800 bg-[#090A0F] p-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[11px] font-bold text-white">{allocation.investment?.title || "Source investment"}</p>
+                          <p className="text-[10px] text-[#9CA3AF]">Max: {formatCurrency(maximum)}</p>
+                        </div>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={formatAmountInput(
+                            sourceAllocationAmounts[allocationId] ?? "",
+                          )}
+                          onChange={(event) =>
+                            handleSourceAllocationAmountChange(
+                              allocation,
+                              event.target.value,
+                            )
+                          }
+                          aria-label={`Amount from ${allocation.investment?.title || "source investment"}`}
+                          className="w-36 rounded-none border border-slate-700 bg-[#11131A] px-2 py-1 text-right text-xs font-bold text-white"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <button
@@ -1113,7 +1238,7 @@ const AdminInvestmentDetails = () => {
                   allocate ||
                   investmentDetails?.investment?.status === "completed" ||
                   investmentDetails?.investment?.status === "archived" ||
-                  (selectedSource === "profit" && !sourceAllocationId)
+                  (selectedSource === "profit" && sourceAllocationIds.length === 0)
                 }
                 className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm"
               >
@@ -1126,7 +1251,6 @@ const AdminInvestmentDetails = () => {
                 <label className="font-bold text-[#9CA3AF] block">
                   Select Platform Member
                 </label>
-
                 <Select
                   showSearch
                   loading={usersLoading}
@@ -1134,80 +1258,65 @@ const AdminInvestmentDetails = () => {
                   optionFilterProp="label"
                   value={targetUserId}
                   onChange={handleUserSelect}
+                  disabled={["completed", "archived", "running", "paused"].includes(investmentDetails?.investment?.status)}
                   className="w-full h-9 rounded-none"
                   options={users.map((user) => ({
                     value: user._id || user.id,
-                    label: `${user.name} (${user.email})`,
+                    label: user.name + " (" + user.email + ")",
                   }))}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-1 bg-[#090A0F] p-0.5">
+              <div className="grid grid-cols-3 gap-1 bg-[#090A0F] p-0.5">
                 <button
                   type="button"
                   onClick={() => handleSourceChange("capital")}
-                  className={`py-1.5 text-[10px] font-bold ${
-                    selectedSource === "capital"
-                      ? "bg-slate-800 text-white"
-                      : "text-[#9CA3AF]"
-                  }`}
+                  className={selectedSource === "capital" ? "py-1.5 text-[10px] font-bold bg-slate-800 text-white" : "py-1.5 text-[10px] font-bold text-[#9CA3AF]"}
                 >
                   FRESH CAPITAL
                 </button>
-
                 <button
                   type="button"
                   onClick={() => handleSourceChange("profit")}
-                  className={`py-1.5 text-[10px] font-bold ${
-                    selectedSource === "profit"
-                      ? "bg-[#34D399] text-[#090A0F]"
-                      : "text-[#9CA3AF]"
-                  }`}
+                  className={selectedSource === "profit" ? "py-1.5 text-[10px] font-bold bg-[#34D399] text-[#090A0F]" : "py-1.5 text-[10px] font-bold text-[#9CA3AF]"}
                 >
-                  AVAILABLE BALANCE
+                  PROFIT ONLY
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSourceChange("mixed")}
+                  className={selectedSource === "mixed" ? "py-1.5 text-[10px] font-bold bg-indigo-400 text-[#090A0F]" : "py-1.5 text-[10px] font-bold text-[#9CA3AF]"}
+                >
+                  PROFIT + FRESH
                 </button>
               </div>
 
-              {selectedSource === "profit" && (
+              {selectedSource !== "capital" && (
                 <>
                   <div className="space-y-1.5">
                     <label className="font-bold text-[#9CA3AF] block">
                       Select Source Investment
                     </label>
-
                     <Select
-                      placeholder={
-                        selectedUser
-                          ? "Choose investment to reinvest from"
-                          : "Select a user first"
-                      }
+                      placeholder={selectedUser ? "Choose investment to reinvest from" : "Select a user first"}
                       disabled={!selectedUser}
-                      value={sourceAllocationId}
+                      mode="multiple"
+                      value={sourceAllocationIds}
                       onChange={handleSourceAllocationSelect}
                       className="w-full h-9 rounded-none"
                       options={(selectedUser?.allocations || [])
-                        .filter(
-                          (allocation) =>
-                            !allocation.isClosed &&
-                            getAvailableBalance(allocation) > 0,
-                        )
+                        .filter((allocation) => !allocation.isClosed && getAvailableBalance(allocation) > 0)
                         .map((allocation) => ({
-                          value:
-                            allocation.allocationId ||
-                            allocation._id ||
-                            allocation.id,
-                          label: `${
-                            allocation.investment?.title || "Source investment"
-                          } — ${formatCurrency(getAvailableBalance(allocation))}`,
+                          value: allocation.allocationId || allocation._id || allocation.id,
+                          label: (allocation.investment?.title || "Source investment") + " — " + formatCurrency(getAvailableBalance(allocation)),
                         }))}
                     />
                   </div>
 
                   <div className="flex items-center justify-between border border-[#34D399]/20 bg-[#090A0F] px-3 py-2">
                     <span className="text-[10px] uppercase text-[#9CA3AF]">
-                      Available balance
+                      Balance left in selected investments
                     </span>
-
                     <span className="font-mono text-sm font-bold text-[#34D399]">
                       {formatCurrency(walletBalance)}
                     </span>
@@ -1215,31 +1324,73 @@ const AdminInvestmentDetails = () => {
                 </>
               )}
 
-              <div className="space-y-1.5">
-                <label className="font-bold text-[#9CA3AF] block">
-                  {selectedSource === "profit"
-                    ? "Amount to Reinvest (₦)"
-                    : "Fresh Investment Amount (₦)"}
-                </label>
+              {(selectedSource === "capital" || selectedSource === "mixed") && (
+                <div className="space-y-1.5">
+                  <label className="font-bold text-[#9CA3AF] block">
+                    {selectedSource === "mixed" ? "Fresh Capital to Add (₦)" : "Fresh Investment Amount (₦)"}
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required={selectedSource === "capital"}
+                    value={formatAmountInput(selectedSource === "mixed" ? freshCapitalAmount : newInvestorAmount)}
+                    onChange={(event) => {
+                      if (selectedSource === "mixed") {
+                        setFreshCapitalAmount(parseAmountInput(event.target.value));
+                      } else {
+                        handleAmountChange(event);
+                      }
+                    }}
+                    placeholder="e.g. 500000"
+                    className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 font-semibold text-white focus:outline-none focus:border-[#34D399]"
+                  />
+                </div>
+              )}
 
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  max={selectedSource === "profit" ? walletBalance : undefined}
-                  value={newInvestorAmount}
-                  onChange={handleAmountChange}
-                  disabled={
-                    selectedSource === "profit" &&
-                    (!sourceAllocationId || walletBalance <= 0)
-                  }
-                  placeholder={
-                    selectedSource === "profit"
-                      ? `Maximum: ${formatCurrency(walletBalance)}`
-                      : "e.g. 500000"
-                  }
-                  className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 font-semibold text-white focus:outline-none focus:border-[#34D399] disabled:opacity-50"
-                />
+              {selectedSource !== "capital" && (
+                <div className="space-y-1.5">
+                  <label className="font-bold text-[#9CA3AF] block">
+                    Amount from Available Balance (₦)
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={formatAmountInput(newInvestorAmount)}
+                    placeholder="Enter amounts for selected source investments"
+                    className="w-full px-3 py-2 bg-[#090A0F] border border-slate-800 font-semibold text-white"
+                  />
+                  <div className="space-y-2">
+                    {(selectedUser?.allocations || [])
+                      .filter((allocation) =>
+                        sourceAllocationIds.includes(String(allocation.allocationId || allocation._id || allocation.id))
+                      )
+                      .map((allocation) => {
+                        const allocationId = String(allocation.allocationId || allocation._id || allocation.id);
+                        const maximum = getAvailableBalance(allocation);
+                        return (
+                          <div key={allocationId} className="flex items-center gap-2 border border-slate-800 bg-[#090A0F] p-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[11px] font-bold text-white">{allocation.investment?.title || "Source investment"}</p>
+                              <p className="text-[10px] text-[#9CA3AF]">Max: {formatCurrency(maximum)}</p>
+                            </div>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={formatAmountInput(sourceAllocationAmounts[allocationId] ?? "")}
+                              onChange={(event) => handleSourceAllocationAmountChange(allocation, event.target.value)}
+                              aria-label={"Amount from " + (allocation.investment?.title || "source investment")}
+                              className="w-36 rounded-none border border-slate-700 bg-[#11131A] px-2 py-1 text-right text-xs font-bold text-white"
+                            />
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between border border-slate-700 bg-[#090A0F] px-3 py-2">
+                <span className="text-[10px] uppercase text-[#9CA3AF]">Total investment amount</span>
+                <span className="font-mono text-sm font-bold text-white">{formatCurrency(totalAllocationAmount)}</span>
               </div>
 
               <button
@@ -1247,7 +1398,8 @@ const AdminInvestmentDetails = () => {
                 disabled={
                   allocate ||
                   !targetUserId ||
-                  (selectedSource === "profit" && !sourceAllocationId)
+                  totalAllocationAmount <= 0 ||
+                  ["completed", "archived", "running", "paused"].includes(investmentDetails?.investment?.status)
                 }
                 className="w-full py-2.5 bg-[#34D399] hover:bg-[#06D6A0] disabled:bg-slate-800 disabled:text-slate-500 text-[#090A0F] font-bold text-sm"
               >
@@ -1255,7 +1407,9 @@ const AdminInvestmentDetails = () => {
                   ? "Processing..."
                   : selectedSource === "profit"
                     ? "Confirm Reinvestment"
-                    : "Confirm Investment"}
+                    : selectedSource === "mixed"
+                      ? "Confirm Mixed Investment"
+                      : "Confirm Investment"}
               </button>
             </form>
           </div>
@@ -1290,9 +1444,7 @@ const AdminInvestmentDetails = () => {
               value={formatCurrencyInput(withdrawableLimit)}
               placeholder={`Maximum ${formatCurrency(remainingLimitCapacity)}`}
               onChange={(event) =>
-                setWithdrawableLimit(
-                  sanitizeCurrencyInput(event.target.value),
-                )
+                setWithdrawableLimit(sanitizeCurrencyInput(event.target.value))
               }
               className="w-full mt-3 px-3 py-2 bg-[#090A0F] border border-slate-700 text-white focus:outline-none focus:border-[#34D399]"
             />
@@ -1305,13 +1457,12 @@ const AdminInvestmentDetails = () => {
                 </span>
               </p>
               <p className="text-[#9CA3AF] text-right">
-              Remaining available:{" "}
-              <span className="font-bold text-[#34D399]">
-                {formatCurrency(remainingLimitCapacity)}
-              </span>
+                Remaining available:{" "}
+                <span className="font-bold text-[#34D399]">
+                  {formatCurrency(remainingLimitCapacity)}
+                </span>
               </p>
             </div>
-
 
             <div className="flex justify-end gap-2 mt-5">
               <button
@@ -1392,6 +1543,7 @@ const AdminInvestmentDetails = () => {
         onCancel={() => {
           setEditingAllocation(null);
           setEditedPrincipal("");
+          setEditedSourceAmounts([]);
         }}
         onOk={savePrincipal}
         confirmLoading={principalSaving}
@@ -1403,13 +1555,26 @@ const AdminInvestmentDetails = () => {
               ? "This allocation came from another investment’s withdrawable balance. Any decrease returns there; any increase is deducted from the same source."
               : "This allocation uses fresh capital. Reducing it removes the difference; increasing it adds fresh capital."}
           </p>
-          <input
-            type="number"
-            min="1"
-            value={editedPrincipal}
-            onChange={(event) => setEditedPrincipal(event.target.value)}
-            className="w-full border border-slate-300 px-3 py-2"
-          />
+          {editedSourceAmounts.length > 0 && (
+            <div className="space-y-3 rounded border border-slate-200 p-3">
+              <p className="text-xs font-bold uppercase">Source investments</p>
+              {editedSourceAmounts.map((row, index) => (
+                <div key={String(row.sourceAllocation)} className="space-y-1">
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span>{row.sourceInvestment?.title || row.sourceAllocation?.investment?.title || `Source investment ${index + 1}`}</span>
+                    <span>Original: {formatCurrency(row.originalAmount)}</span>
+                  </div>
+                  <input type="number" min="0" value={row.amount} onChange={(event) => {
+                    const next = editedSourceAmounts.map((item, i) => i === index ? { ...item, amount: event.target.value } : item);
+                    setEditedSourceAmounts(next);
+                    setEditedPrincipal(String(next.reduce((sum, item) => sum + Number(item.amount || 0), 0)));
+                  }} className="w-full border border-slate-300 px-3 py-2" />
+                </div>
+              ))}
+              <div className="text-right text-xs font-bold">Source total: {formatCurrency(editedSourceAmounts.reduce((sum, row) => sum + Number(row.amount || 0), 0))}</div>
+            </div>
+          )}
+          <input type="number" min="1" value={editedPrincipal} readOnly={editedSourceAmounts.length > 0} onChange={(event) => setEditedPrincipal(event.target.value)} className="w-full border border-slate-300 px-3 py-2" />
         </div>
       </Modal>
     </motion.div>

@@ -28,7 +28,10 @@ import {
 } from "../api/userApi";
 import { useAuthStore } from "../store/useAuthStore";
 import { useNavigate } from "react-router-dom";
-import { formatCurrencyInput, sanitizeCurrencyInput } from "../utils/currencyInput";
+import {
+  formatCurrencyInput,
+  sanitizeCurrencyInput,
+} from "../utils/currencyInput";
 
 const formatCurrency = (amount = 0) =>
   new Intl.NumberFormat("en-NG", {
@@ -114,7 +117,10 @@ const Users = () => {
     }
     try {
       setImpersonating(true);
-      const result = await impersonateUser(user._id || user.id, impersonationPassword);
+      const result = await impersonateUser(
+        user._id || user.id,
+        impersonationPassword,
+      );
       const impersonatedUser = { ...result.user, role: "user" };
       const started = startImpersonation(result.accessToken, impersonatedUser);
       if (!started) {
@@ -145,8 +151,12 @@ const Users = () => {
       await openUserDetailsModal(selectedUser);
       await loadUsersData();
     } catch (error) {
-      message.error(error.response?.data?.message || "Unable to charge maintenance fee.");
-    } finally { setIsSubmitting(false); }
+      message.error(
+        error.response?.data?.message || "Unable to charge maintenance fee.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const loadUsersData = async () => {
@@ -356,9 +366,7 @@ const Users = () => {
       closeUserDetailsModal();
       await loadUsersData();
     } catch (error) {
-      message.error(
-        error?.response?.data?.message || "Failed to delete user.",
-      );
+      message.error(error?.response?.data?.message || "Failed to delete user.");
     } finally {
       setIsSubmitting(false);
     }
@@ -419,22 +427,24 @@ const Users = () => {
           </p>
         </div>
 
-        {currentUser?.role === "admin" && <button
-          onClick={() => {
-            setEditingUser(null);
+        {currentUser?.role === "admin" && (
+          <button
+            onClick={() => {
+              setEditingUser(null);
 
-            setNewUserName("");
-            setNewUserEmail("");
-            setNewUserPhone("");
-            setNewUserPassword("");
+              setNewUserName("");
+              setNewUserEmail("");
+              setNewUserPhone("");
+              setNewUserPassword("");
 
-            setIsCreateModalOpen(true);
-          }}
-          className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 transition-colors cursor-pointer"
-        >
-          <UserPlus size={16} />
-          Register Investor
-        </button>}
+              setIsCreateModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-2 bg-[#34D399] hover:bg-[#06D6A0] text-[#090A0F] font-bold text-sm px-4 py-2.5 transition-colors cursor-pointer"
+          >
+            <UserPlus size={16} />
+            Register Investor
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -531,9 +541,35 @@ const Users = () => {
                 return (
                   <tr
                     key={user._id || user.id}
-                    className="hover:bg-[#090A0F]/40 transition-colors"
+                    onClick={(event) => {
+                      const interactiveTarget = event.target.closest(
+                        "button, a, input, select, [role='button']",
+                      );
+                      if (
+                        interactiveTarget &&
+                        interactiveTarget !== event.currentTarget
+                      )
+                        return;
+                      navigate(
+                        `${currentUser?.role === "superadmin" ? "/superadmin/users" : "/dashboard/users"}/${user._id || user.id}`,
+                      );
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    onKeyDown={(event) => {
+                      if (
+                        event.target !== event.currentTarget ||
+                        (event.key !== "Enter" && event.key !== " ")
+                      )
+                        return;
+                      event.preventDefault();
+                      navigate(
+                        `${currentUser?.role === "superadmin" ? "/superadmin/users" : "/dashboard/users"}/${user._id || user.id}`,
+                      );
+                    }}
+                    className="responsive-clickable-row hover:bg-[#090A0F]/40 transition-colors !cursor-pointer"
                   >
-                    <td className="p-4">
+                    <td className="p-4 cursor-pointer">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#090A0F] text-white font-semibold flex items-center justify-center text-lg capitalize shrink-0">
                           {user.name?.charAt(0) || "?"}
@@ -578,20 +614,58 @@ const Users = () => {
                     </td>
 
                     <td className="p-4 text-center">
-                      {currentUser?.role === "superadmin" && <Popover
-                        trigger="click"
-                        open={impersonationUserId === (user._id || user.id)}
-                        onOpenChange={(open) => {
-                          setImpersonationUserId(open ? (user._id || user.id) : null);
-                          if (!open) setImpersonationPassword("");
-                        }}
-                        title="Login as this investor?"
-                        content={<div className="w-72 space-y-3"><p className="text-xs text-slate-600">This creates a 15-minute, read-only session and records the action in the audit log.</p><Input.Password value={impersonationPassword} onChange={(event) => setImpersonationPassword(event.target.value)} placeholder="Administrator password" onPressEnter={() => handleImpersonate(user)} /><button type="button" disabled={impersonating || !impersonationPassword} onClick={() => handleImpersonate(user)} className="w-full px-3 py-2 text-xs bg-[#34D399] text-[#090A0F] font-bold disabled:opacity-50">{impersonating ? "Starting..." : "Login As"}</button></div>}
-                      >
-                        <button title="Login as investor" className="p-1.5 text-[#9CA3AF] hover:text-[#3B82F6] hover:bg-[#090A0F] transition-all inline-flex items-center justify-center cursor-pointer"><LogIn size={15} /></button>
-                      </Popover>}
+                      {currentUser?.role === "superadmin" && (
+                        <Popover
+                          trigger="click"
+                          open={impersonationUserId === (user._id || user.id)}
+                          onOpenChange={(open) => {
+                            setImpersonationUserId(
+                              open ? user._id || user.id : null,
+                            );
+                            if (!open) setImpersonationPassword("");
+                          }}
+                          title="Login as this investor?"
+                          content={
+                            <div className="w-72 space-y-3">
+                              <p className="text-xs text-slate-600">
+                                This creates a 15-minute, read-only session and
+                                records the action in the audit log.
+                              </p>
+                              <Input.Password
+                                value={impersonationPassword}
+                                onChange={(event) =>
+                                  setImpersonationPassword(event.target.value)
+                                }
+                                placeholder="Administrator password"
+                                onPressEnter={() => handleImpersonate(user)}
+                              />
+                              <button
+                                type="button"
+                                disabled={
+                                  impersonating || !impersonationPassword
+                                }
+                                onClick={() => handleImpersonate(user)}
+                                className="w-full px-3 py-2 text-xs bg-[#34D399] text-[#090A0F] font-bold disabled:opacity-50"
+                              >
+                                {impersonating ? "Starting..." : "Login As"}
+                              </button>
+                            </div>
+                          }
+                        >
+                          <button
+                            title="Login as investor"
+                            className="p-1.5 text-[#9CA3AF] hover:text-[#3B82F6] hover:bg-[#090A0F] transition-all inline-flex items-center justify-center cursor-pointer"
+                          >
+                            <LogIn size={15} />
+                          </button>
+                        </Popover>
+                      )}
                       <button
-                        onClick={() => navigate(`${currentUser?.role === "superadmin" ? "/superadmin/users" : "/dashboard/users"}/${user._id || user.id}`)}
+                        onClick={() =>
+                          navigate(
+                            `${currentUser?.role === "superadmin" ? "/superadmin/users" : "/dashboard/users"}/${user._id || user.id}`,
+                          )
+                        }
                         title="View investor details"
                         className="p-1.5 text-[#9CA3AF] hover:text-[#34D399] hover:bg-[#090A0F] transition-all inline-flex items-center justify-center cursor-pointer"
                       >
@@ -609,12 +683,34 @@ const Users = () => {
       {filteredUsers.length > 0 && (
         <div className="flex flex-col gap-3 border border-slate-800 bg-[#1F2937] px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
           <span className="text-[#9CA3AF]">
-            Showing {(safeCurrentPage - 1) * pageSize + 1}–{Math.min(safeCurrentPage * pageSize, filteredUsers.length)} of {filteredUsers.length} users
+            Showing {(safeCurrentPage - 1) * pageSize + 1}–
+            {Math.min(safeCurrentPage * pageSize, filteredUsers.length)} of{" "}
+            {filteredUsers.length} users
           </span>
           <div className="flex items-center gap-2">
-            <button type="button" disabled={safeCurrentPage === 1} onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))} className="inline-flex items-center gap-1 border border-slate-700 px-3 py-2 font-bold text-white hover:border-[#34D399] disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft size={14} />Previous</button>
-            <span className="min-w-20 text-center font-bold text-white">Page {safeCurrentPage} of {totalPages}</span>
-            <button type="button" disabled={safeCurrentPage === totalPages} onClick={() => setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))} className="inline-flex items-center gap-1 border border-slate-700 px-3 py-2 font-bold text-white hover:border-[#34D399] disabled:cursor-not-allowed disabled:opacity-40">Next<ChevronRight size={14} /></button>
+            <button
+              type="button"
+              disabled={safeCurrentPage === 1}
+              onClick={() => setCurrentPage(Math.max(1, safeCurrentPage - 1))}
+              className="inline-flex items-center gap-1 border border-slate-700 px-3 py-2 font-bold text-white hover:border-[#34D399] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft size={14} />
+              Previous
+            </button>
+            <span className="min-w-20 text-center font-bold text-white">
+              Page {safeCurrentPage} of {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={safeCurrentPage === totalPages}
+              onClick={() =>
+                setCurrentPage(Math.min(totalPages, safeCurrentPage + 1))
+              }
+              className="inline-flex items-center gap-1 border border-slate-700 px-3 py-2 font-bold text-white hover:border-[#34D399] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+              <ChevronRight size={14} />
+            </button>
           </div>
         </div>
       )}
@@ -670,8 +766,56 @@ const Users = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Popover trigger="click" open={feePopoverOpen} onOpenChange={setFeePopoverOpen} content={<div className="w-64 space-y-3"><p className="text-xs font-bold">Charge maintenance fee</p><input className="w-full border px-2 py-1.5" placeholder="Amount" inputMode="numeric" value={formatCurrencyInput(feeForm.amount)} onChange={(e) => setFeeForm({ ...feeForm, amount: sanitizeCurrencyInput(e.target.value) })} /><input className="w-full border px-2 py-1.5" type="password" placeholder="Admin password" value={feeForm.password} onChange={(e) => setFeeForm({ ...feeForm, password: e.target.value })} /><button disabled={isSubmitting || !feeForm.amount || !feeForm.password} onClick={handleUserMaintenanceFee} className="w-full py-1.5 bg-amber-500 text-slate-950 font-bold disabled:opacity-50">Confirm Charge</button></div>}>
-                        <button className="px-3 py-1.5 border border-amber-500/40 bg-amber-950/20 text-[10px] font-bold uppercase text-amber-400">Maintenance Fee</button>
+                      <Popover
+                        trigger="click"
+                        open={feePopoverOpen}
+                        onOpenChange={setFeePopoverOpen}
+                        content={
+                          <div className="w-64 space-y-3">
+                            <p className="text-xs font-bold">
+                              Charge maintenance fee
+                            </p>
+                            <input
+                              className="w-full border px-2 py-1.5"
+                              placeholder="Amount"
+                              inputMode="numeric"
+                              value={formatCurrencyInput(feeForm.amount)}
+                              onChange={(e) =>
+                                setFeeForm({
+                                  ...feeForm,
+                                  amount: sanitizeCurrencyInput(e.target.value),
+                                })
+                              }
+                            />
+                            <input
+                              className="w-full border px-2 py-1.5"
+                              type="password"
+                              placeholder="Admin password"
+                              value={feeForm.password}
+                              onChange={(e) =>
+                                setFeeForm({
+                                  ...feeForm,
+                                  password: e.target.value,
+                                })
+                              }
+                            />
+                            <button
+                              disabled={
+                                isSubmitting ||
+                                !feeForm.amount ||
+                                !feeForm.password
+                              }
+                              onClick={handleUserMaintenanceFee}
+                              className="w-full py-1.5 bg-amber-500 text-slate-950 font-bold disabled:opacity-50"
+                            >
+                              Confirm Charge
+                            </button>
+                          </div>
+                        }
+                      >
+                        <button className="px-3 py-1.5 border border-amber-500/40 bg-amber-950/20 text-[10px] font-bold uppercase text-amber-400">
+                          Maintenance Fee
+                        </button>
                       </Popover>
                       <Tag
                         color={
@@ -715,8 +859,7 @@ const Users = () => {
                               <button
                                 type="button"
                                 disabled={
-                                  resettingPassword ||
-                                  resetPassword.length < 8
+                                  resettingPassword || resetPassword.length < 8
                                 }
                                 onClick={handleResetPassword}
                                 className="px-3 py-1.5 text-xs bg-amber-500 text-slate-950 disabled:opacity-50"
@@ -864,7 +1007,42 @@ const Users = () => {
                           selectedUser.allocations.map((allocation) => (
                             <tr
                               key={allocation._id || allocation.id}
-                              className="bg-[#1F2937] hover:bg-[#111827]"
+                              role="link"
+                              tabIndex={0}
+                              aria-label={`Open ${selectedUser?.name || "investor"} statement for ${allocation.investment?.title || "this investment"}`}
+                              onClick={() => {
+                                const investmentId =
+                                  allocation.investment?._id ||
+                                  allocation.investment?.id ||
+                                  allocation.investmentId;
+                                const userId =
+                                  selectedUser?._id || selectedUser?.id;
+                                if (investmentId && userId) {
+                                  navigate(
+                                    `${currentUser?.role === "superadmin" ? "/superadmin" : "/dashboard"}/users/${userId}/investment/${investmentId}`,
+                                  );
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (
+                                  event.target !== event.currentTarget ||
+                                  (event.key !== "Enter" && event.key !== " ")
+                                )
+                                  return;
+                                event.preventDefault();
+                                const investmentId =
+                                  allocation.investment?._id ||
+                                  allocation.investment?.id ||
+                                  allocation.investmentId;
+                                const userId =
+                                  selectedUser?._id || selectedUser?.id;
+                                if (investmentId && userId) {
+                                  navigate(
+                                    `${currentUser?.role === "superadmin" ? "/superadmin" : "/dashboard"}/users/${userId}/investment/${investmentId}`,
+                                  );
+                                }
+                              }}
+                              className="bg-[#1F2937] cursor-pointer hover:bg-[#111827] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#34D399]"
                             >
                               <td className="px-4 py-3">
                                 <p className="font-bold text-white capitalize!">

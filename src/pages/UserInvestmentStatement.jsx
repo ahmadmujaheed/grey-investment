@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowDownLeft,
   ArrowLeft,
@@ -86,8 +86,8 @@ const getWithdrawalUserId = (item) =>
 const getAvailable = (allocation) =>
   num(
     allocation?.availableBalance ??
-      allocation?.availableToWithdraw ??
-      allocation?.remainingWithdrawable,
+    allocation?.availableToWithdraw ??
+    allocation?.remainingWithdrawable,
   );
 
 const eventMeta = (type = "") => {
@@ -113,6 +113,7 @@ const eventMeta = (type = "") => {
 const UserInvestmentStatement = () => {
   const { userId, investmentId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [investmentResponse, setInvestmentResponse] = useState(null);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -122,6 +123,8 @@ const UserInvestmentStatement = () => {
   const backToUser = isSuperAdmin
     ? `/superadmin/users/${userId}`
     : `/dashboard/users/${userId}`;
+  const backTarget = location.state?.returnTo || backToUser;
+  const backLabel = location.state?.returnLabel || "Back to Investor Statement";
 
   useEffect(() => {
     let mounted = true;
@@ -178,10 +181,10 @@ const UserInvestmentStatement = () => {
 
     const investor = Array.isArray(investmentResponse?.investors)
       ? investmentResponse.investors.find(
-          (item) =>
-            idOf(item?.user?._id || item?.user?.id || item?.userId) === idOf(userId) &&
-            idOf(item?.investmentId || investmentResponse?.investment?._id) === idOf(investmentId),
-        )
+        (item) =>
+          idOf(item?.user?._id || item?.user?.id || item?.userId) === idOf(userId) &&
+          idOf(item?.investmentId || investmentResponse?.investment?._id) === idOf(investmentId),
+      )
       : null;
 
     return investor || investmentResponse?.myInvestment || null;
@@ -370,8 +373,8 @@ const UserInvestmentStatement = () => {
   if (!user || !allocation) {
     return (
       <div className="min-h-screen bg-[#1F1F1F] p-6 text-white">
-        <button onClick={() => navigate(backToUser)} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#34D399]">
-          <ArrowLeft size={16} /> Back to Investor
+        <button onClick={() => navigate(backTarget)} className="mb-6 inline-flex items-center gap-2 text-sm font-bold text-[#34D399]">
+          <ArrowLeft size={16} /> {backLabel}
         </button>
         <div className="border border-slate-800 bg-[#1F2937] p-10 text-center">
           <p className="text-slate-400">This investment allocation could not be found for this investor.</p>
@@ -384,8 +387,8 @@ const UserInvestmentStatement = () => {
     <div className="investment-statement-page min-h-screen bg-[#1F1F1F] p-4 text-slate-300 sm:p-6">
       <div className="no-print mb-5 flex flex-col gap-3 border-b border-slate-800 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <Link to={backToUser} className="inline-flex items-center gap-2 text-xs font-bold text-[#34D399] hover:text-white">
-            <ArrowLeft size={15} /> Back to Investor Statement
+          <Link to={backTarget} className="inline-flex items-center gap-2 text-xs font-bold text-[#34D399] hover:text-white">
+            <ArrowLeft size={15} /> {backLabel}
           </Link>
           <div className="mt-3 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#090A0F] text-[#34D399] font-black">
@@ -417,15 +420,21 @@ const UserInvestmentStatement = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric icon={PiggyBank} label="Money Invested" value={money(totals.principal)} />
+        <Metric icon={PiggyBank} label="Principal Deposited" value={money(totals.principal)} tone="text-white" />
         <Metric icon={ArrowDownLeft} label="Profit Earned" value={money(totals.profit)} tone="text-emerald-400" />
-        <Metric icon={Wallet} label="Withdrawable Limit" value={money(totals.limit)} tone="text-amber-400" />
-        <Metric icon={Wallet} label="Available to Withdraw" value={money(totals.available)} tone="text-[#34D399]" />
-        <Metric icon={ArrowUpRight} label="Money Withdrawn" value={money(totals.withdrawn)} tone="text-rose-400" />
-        <Metric icon={RefreshCcw} label="Reinvested" value={money(totals.reinvested)} tone="text-violet-400" />
-        <Metric icon={Coins} label="Total Investment Value" value={money(totals.totalValue)} tone="text-blue-400" />
-        <Metric icon={CheckCircle2} label="Investment Status" value={investment.status || allocation.status || "—"} tone="text-[#34D399]" />
-      </div>
+        <Metric icon={Coins} label="Total Pool Value" value={money(totals.totalValue)} tone="text-indigo-400" />
+        <Metric icon={Wallet} label="Available Balance" value={money(totals.available)}
+          tone={totals.available === 0 ? "text-rose-200" : "text-emerald-200"}
+          customBg={
+            totals.available === 0
+              ? "bg-rose-950/40 border-rose-500/30"
+              : "bg-emerald-950/20 border-emerald-500/20"
+          }
+        />
+        <Metric icon={ArrowUpRight} label="Amount Collected" value={money(totals.withdrawn)} tone="text-teal-400" />
+        <Metric icon={Wallet} label="Total Admin Allocation" value={money(totals.limit)} tone="text-fuchsia-500" />
+        <Metric icon={RefreshCcw} label="Amount Reinvested" value={money(totals.reinvested)} tone="text-amber-400" />
+        <Metric icon={CheckCircle2} label="Investment Status" value={investment.status || allocation.status || "—"} tone="text-[#34D399]" />      </div>
 
       <section className="statement-print-section mt-5 border border-slate-800 bg-[#1F2937]">
         <div className="border-b border-slate-800 bg-[#090A0F] px-4 py-3">
@@ -518,8 +527,8 @@ const UserInvestmentStatement = () => {
   );
 };
 
-const Metric = ({ icon: Icon, label, value, tone = "text-white" }) => (
-  <div className="border border-slate-800 bg-[#1F2937] p-4">
+const Metric = ({ icon: Icon, label, value, tone = "text-white", customBg = "" }) => (
+  <div className={`border p-4 ${customBg || "border-slate-800 bg-[#1F2937]"}`}>
     <div className="flex items-center gap-3">
       <div className="bg-[#090A0F] p-2.5 text-[#34D399]"><Icon size={18} /></div>
       <div className="min-w-0">
