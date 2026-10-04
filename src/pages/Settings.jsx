@@ -227,7 +227,7 @@ const Settings = () => {
               </button>
             </div>
           </form> */}
-        {/* </motion.div> */}
+        {/* </motion.div>  */}
 
         {/* CARD 3: RESET PASSWORD */}
         <motion.div 
