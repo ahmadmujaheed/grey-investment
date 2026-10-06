@@ -85,7 +85,7 @@ const Investments = () => {
   return (
     <div className="space-y-8 sm:px-6 py-4">
       {/* Metrics Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <StatCard
           title="Total Money Invested"
           value={`₦${investmentsummary.totalPrincipal.toLocaleString()}`}
@@ -105,7 +105,7 @@ const Investments = () => {
           icon={<ShieldCheck className="w-5 h-5 text-emerald-400" />}
           gradient="from-emerald-500/10 to-transparent"
         />
-      </div>
+      </div> */}
 
       {/* Investments Section */}
       {loading ? (
